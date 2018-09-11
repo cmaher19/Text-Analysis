@@ -1,0 +1,871 @@
+---
+title: "text"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+```{r}
+library(tidytext)
+library(tidyverse)
+library(gutenbergr)
+```
+
+Get a book to work with (Peter Pan) and split into tokens
+```{r}
+peterpan <- gutenberg_download(16) %>%
+  mutate(linenumber=row_number()) %>%
+  unnest_tokens(word, text)
+```
+
+Remove stop words
+```{r}
+peterpan <- peterpan %>%
+  anti_join(stop_words)
+```
+
+The first 76 lines of the data are the table of contents and should be removed
+```{r}
+peterpan <- peterpan[-c(1:76),]
+```
+
+Check out most common words - looks like a lot of character names as well as some common verbs and nouns (cried, bed, etc)
+```{r}
+peterpan %>%
+  count(word) %>%
+  filter(n > 50) %>%
+  mutate(word = reorder(word, n)) %>%
+  ggplot(aes(word, n)) + geom_col() + coord_flip() + ggtitle('Most Common Words in Peter Pan')
+```
+
+Sentiments in Peter Pan
+Really just getting a feel for the types of graphs you can make with sentiment analysis
+```{r}
+# Words with the largest contribution according to AFINN lexicon
+peterpan %>%
+  inner_join(get_sentiments("afinn")) %>%
+  group_by(score) %>%
+  count(word, sort=TRUE) %>%
+  ungroup() %>%
+  mutate(word_score = score*n) %>%
+  filter(abs(word_score) > 25) %>%
+  mutate(word = reorder(word, word_score)) %>%
+  ggplot(aes(word, n*score, fill=n*score>0)) + geom_col(show.legend = FALSE) + coord_flip() + ggtitle("Words with largest Sentiment Contribution")
+
+# Most commonly occurring positive and negative words according to the bing lexicon
+peterpan %>%
+  inner_join(get_sentiments("bing")) %>%
+  filter(word != "darling") %>%
+  group_by(sentiment) %>%
+  count(word, sort=TRUE) %>%
+  top_n(10) %>%
+  ungroup() %>%
+  mutate(word = reorder(word, n)) %>%
+  ggplot(aes(word, n, fill=sentiment)) + geom_col(show.legend = FALSE) + facet_wrap(~sentiment, scales="free_y") + coord_flip() + ggtitle('Most Common Sentiments with Bing Lexicon')
+
+# Break book down by chunks of 75 lines and analyze sentiments that way
+peterpan %>%
+  inner_join(get_sentiments("afinn")) %>%
+  group_by(index = linenumber %/% 75) %>%
+  summarise(sentiment = sum(score)) %>%
+  ggplot(aes(index, sentiment, fill=sentiment > 0)) + geom_col(show.legend = FALSE) + ggtitle("Sentiment Scores every 75 Lines")
+```
+
+Comparing two different sentiment lexicons for Peter Pan
+```{r}
+pp_afinn <- peterpan %>%
+  inner_join(get_sentiments("afinn")) %>%
+  group_by(index = linenumber %/% 75) %>%
+  summarise(sentiment = sum(score)) %>%
+  mutate(method = "AFINN")
+
+pp_bing <- peterpan %>%
+  inner_join(get_sentiments("bing")) %>%
+  mutate(method = "Bing") %>%
+  count(method, index = linenumber %/% 75, sentiment) %>%
+  spread(sentiment, n, fill = 0) %>%
+  mutate(sentiment = positive - negative)
+
+# The lexicons show roughly the same trends
+# Note: remove darling from afinn list
+bind_rows(pp_afinn, pp_bing) %>%
+  ggplot(aes(index, sentiment, fill=method)) + geom_col(show.legend = FALSE) + facet_wrap(~method, ncol = 1, scales = "free_y") + ggtitle("Comparing Sentiment Lexicons for Peter Pan")
+```
+
+Lets pull in another book by the same author..."The Little White Bird"
+First 84 lines are the contents
+```{r}
+whitebird <- gutenberg_download(1376) %>%
+  mutate(linenumber=row_number()) %>%
+  unnest_tokens(word, text) %>%
+  anti_join(stop_words)
+
+whitebird <- whitebird[-c(1:84),]
+```
+
+Do some comparisons between the two books...
+Look at most common words for each book
+```{r}
+barrie_books <- bind_rows(peterpan, whitebird)
+
+# Change labels when faceting? Fix this!
+# For now, Peter Pan is 16 and The Little White Bird is 1376
+barrie_books %>%
+  group_by(gutenberg_id) %>%
+  mutate(title = ifelse(gutenberg_id == 16, "Peter Pan", "The Little White Bird")) %>%
+  count(word, title, sort=TRUE) %>%
+  top_n(10) %>%
+  ungroup() %>%
+  mutate(word = reorder(word, n)) %>%
+  ggplot(aes(word, n, fill=gutenberg_id)) + geom_col(show.legend = FALSE) + coord_flip() + facet_wrap(~title, scales="free_y")
+```
+
+Sentiment comparisons between the books...Barrie seems to write rather negative books
+```{r}
+# Compare books using Bing Lexicon
+# Remember that Peter Pan is 16 and Little White Bird is 1376
+barrie_books %>%
+  mutate(title = ifelse(gutenberg_id == 16, "Peter Pan", "The Little White Bird")) %>%
+  inner_join(get_sentiments("bing")) %>%
+  count(title, index = linenumber %/% 75, sentiment) %>%
+  spread(sentiment, n, fill=0) %>%
+  mutate(sentiment = positive - negative) %>%
+  ggplot(aes(index, sentiment, fill = title)) + geom_col(show.legend = FALSE) + facet_wrap(~title, ncol = 1, scales = "free_x") + ggtitle("Comparing Books with Bing Lexicon")
+
+# Compare books using AFINN Lexicon
+barrie_books %>%
+  mutate(title = ifelse(gutenberg_id == 16, "Peter Pan", "The Little White Bird")) %>%
+  inner_join(get_sentiments("afinn")) %>%
+  group_by(title, index = linenumber %/% 75) %>%
+  summarise(sentiment = sum(score)) %>%
+  ggplot(aes(index, sentiment, fill = title)) + geom_col(show.legend = FALSE) + facet_wrap(~title, ncol = 1, scales = "free_x") + ggtitle("Comparing Books with AFINN Lexicon")
+```
+
+
+
+
+Wordclouds
+```{r}
+library(wordcloud)
+library(reshape2)
+
+# Simple word cloud of most common words
+peterpan %>%
+  count(word) %>%
+  with(wordcloud(word, n, max.words = 50))
+
+
+# Cooler word cloud with most common words by sentiment
+# Question: what does putting fill = 0 do?
+# NOTE: Why are the labels being cut off? 
+peterpan %>%
+  inner_join(get_sentiments("bing")) %>%
+  count(word, sentiment, sort = TRUE) %>%
+  acast(word ~ sentiment, value.var = "n", fill=1) %>%
+  comparison.cloud(colors = c("orchid", "seagreen2"), max.words = 100, scale = c(3,0.5))
+
+
+# Remove darling for this one and see what happens
+peterpan %>%
+  inner_join(get_sentiments("bing")) %>%
+  filter(word != "darling") %>%
+  count(word, sentiment, sort = TRUE) %>%
+  acast(word ~ sentiment, value.var = "n", fill=1) %>%
+  comparison.cloud(colors = c("orchid", "seagreen2"), max.words = 100, scale = c(3,0.5))
+```
+
+TF-IDF Section
+```{r}
+book_words <- barrie_books %>%
+  count(gutenberg_id, word, sort=TRUE) %>%
+  ungroup()
+
+total_words <- book_words %>%
+  group_by(gutenberg_id) %>%
+  summarise(total = sum(n))
+
+book_words <- left_join(book_words, total_words)
+
+# A rather boring plot in my opinion but it shows how the terms are distributed
+ggplot(book_words, aes(n/total, fill=gutenberg_id)) + geom_histogram(show.legend = FALSE) + xlim(NA, 0.0075) + facet_wrap(~gutenberg_id, ncol=1, scales="free_y") + ggtitle("Term Frequency Distribution in Barrie Books")
+
+# This step actually gets the tf-idf scores
+book_words <- book_words %>%
+  bind_tf_idf(word, gutenberg_id, n) 
+
+# Looking at words with high tf-idf scores across both books
+book_words %>%
+  arrange(desc(tf_idf)) %>%
+  mutate(word = factor(word, levels = rev(unique(word)))) %>%
+  top_n(20) %>%
+  mutate(gutenberg_id = as.factor(gutenberg_id)) %>%
+  ggplot(aes(word, tf_idf, fill = gutenberg_id)) +
+  geom_col() + labs(x=NULL, y = "tf-idf") + coord_flip() + ggtitle("High Tf-idf Scores across Books")
+
+
+# Looking at both books individually
+# Notice the terms with the highest tf-idf scores are mostly character names, which makes sense
+book_words %>%
+  arrange(desc(tf_idf)) %>%
+  mutate(word = factor(word, levels = rev(unique(word)))) %>%
+  group_by(gutenberg_id) %>%
+  top_n(10) %>%
+  ungroup() %>%
+  ggplot(aes(word, tf_idf, fill = gutenberg_id)) + geom_col(show.legend = FALSE) + facet_wrap(~gutenberg_id, ncol=1, scales="free_y") + coord_flip()
+```
+
+Making a bigram token
+```{r}
+pp_bigram <- gutenberg_download(16) %>%
+  mutate(linenumber=row_number()) %>%
+  unnest_tokens(bigram, text, token = "ngrams", n=2)
+pp_bigram
+
+
+wb_bigram <- gutenberg_download(1376) %>%
+  mutate(linenumber=row_number()) %>%
+  unnest_tokens(bigram, text, token = "ngrams", n=2)
+wb_bigram
+
+barrie_bigram <- rbind(pp_bigram, wb_bigram)
+
+
+
+# Clean up the data a bit to get some more meaningful bigrams 
+# Notice the count is much smaller here since stop words are so often part of a pair of words
+separate_bigrams <- pp_bigram %>%
+  separate(bigram, c("word1", "word2"), sep = " ")
+
+# Remove any bigrams that include a stop word
+clean_bigrams <- separate_bigrams %>%
+  filter(!word1 %in% stop_words$word) %>%
+  filter(!word2 %in% stop_words$word) %>%
+  count(word1, word2, sort=TRUE)
+clean_bigrams
+
+# Make them back into one two word piece instead of two one word pieces
+united_bigrams <- clean_bigrams %>%
+  unite(bigram, word1, word2, sep = " ")
+
+# Quick example of things you can do with this --> can search to find the most common words that precede Peter and Wendy
+clean_bigrams %>%
+  filter(word2 == "wendy" | word2 == "peter")
+```
+
+Using bigrams to see where sentiment analysis can go wrong
+```{r}
+negation <- c("not", "no", "never", "without")
+negation_words <- separate_bigrams %>%
+  filter(word1 %in% negation) %>%
+  inner_join(get_sentiments("afinn"), by = c(word2 = "word")) %>%
+  count(word2, score, sort = TRUE) %>%
+  ungroup()
+negation_words
+
+# Look at words that are contributing the most to sentiment scores *in the wrong sense*
+negation_words %>%
+  mutate(contribution = n*score) %>%
+  arrange(desc(abs(contribution))) %>%
+  head(20) %>%
+  mutate(word2 = reorder(word2, contribution)) %>%
+  ggplot(aes(word2, n*score, fill = n*score > 0)) + geom_col(show.legend = FALSE) + xlab("Words preceded by a negation word") + ylab("Sentiment score * number of occurrences") + coord_flip()
+```
+
+Network graph...
+```{r}
+library(igraph)
+bigram_graph <- clean_bigrams %>%
+  filter(n>3) %>%
+  graph_from_data_frame()
+bigram_graph
+
+# Simple graph of common bigrams
+# NOTE: why are there some with only one word?
+library(ggraph)
+set.seed(14)
+ggraph(bigram_graph, layout = "fr") + geom_edge_link() + geom_node_point(color="plum", size=2) + geom_node_text(aes(label = name, vjust = 1, hjust = 1))
+
+# This one shows directionality
+# Darker shade means more occurrences
+set.seed(14)
+a <- grid::arrow(type = "closed", length = unit(.15, "inches"))
+ggraph(bigram_graph, layout = "fr") + geom_edge_link(aes(edge_alpha = n), show.legend = FALSE, arrow = a, end_cap = circle(.07, "inches")) + geom_node_point(color = "plum", size = 3) + geom_node_text(aes(label = name), vjust = 1, hjust = 1) + theme_void()
+```
+
+Word coocurrences
+```{r}
+# Break text down into sections of 10 lines
+pp_section_words <- gutenberg_download(16) %>%
+  mutate(section = row_number() %/% 5) %>%
+  filter(section > 0) %>%
+  unnest_tokens(word, text) %>%
+  filter(!word %in% stop_words$word)
+pp_section_words
+
+library(widyr)
+# Look at most common word pairs
+word_pairs <- pp_section_words %>%
+  pairwise_count(word, section, sort = TRUE)
+word_pairs
+
+# Finding words that most often occur with "Wendy"
+word_pairs %>%
+  filter(item1 == "wendy")
+```
+
+Correlations
+```{r}
+# Looking at actual correlations
+word_cors <- pp_section_words %>%
+  group_by(word) %>%
+  filter(n() >= 20) %>%
+  pairwise_cor(word, section, sort = TRUE)
+word_cors
+
+# Finding words that are most correlated with "Wendy"
+word_cors %>%
+  filter(item1 == "wendy")
+
+# Quick example in looking at words most correlated with some important Peter Pan characters
+word_cors %>%
+  filter(item1 %in% c("wendy", "peter", "tink", "hook")) %>%
+  group_by(item1) %>%
+  top_n(6) %>%
+  ungroup() %>%
+  mutate(item2 = reorder(item2, correlation)) %>%
+  ggplot(aes(item2, correlation, fill=item1)) + geom_bar(stat = "identity", show.legend=FALSE) + facet_wrap(~item1, scales = "free_y") + coord_flip() + ggtitle("Words Most Strongly Correlated with Four Main Characters")
+
+# Correlation network graph
+set.seed(14) 
+word_cors %>%
+  filter(correlation > 0.15) %>%
+  graph_from_data_frame() %>%
+  ggraph(layout = "fr") + geom_edge_link(aes(edge_alpha = correlation), show.legend = FALSE) + geom_node_point(color = "plum", size = 3) + geom_node_text(aes(label = name), repel = TRUE) + theme_void()
+```
+
+
+
+Play around with a different type of data...
+Document Term Matrices
+```{r}
+# Got some news articles from BBC for playing around with -- create a corpus of them and clean it up
+library(tm)
+corpus <- VCorpus(DirSource('bbc/tech')) %>%
+  tm_map(stripWhitespace) %>%
+  tm_map(removeNumbers) %>%
+  tm_map(removePunctuation) %>%
+  tm_map(content_transformer(tolower)) %>%
+  tm_map(removeWords, stopwords("en"))
+
+# Create the matrix that we can work with
+bbc_dtm <- DocumentTermMatrix(corpus, control = list(weighting = weightTf))
+bbc_dtm
+
+bbc_tidy <- tidy(bbc_dtm)
+bbc_tidy
+
+# Get tf-idf information
+bbc_tf_idf <- bbc_tidy %>%
+  bind_tf_idf(term, document, count) %>%
+  arrange(desc(tf_idf))
+bbc_tf_idf
+
+# Just looking at tf_idf scores for the first four articles in the corpus
+# Fix the filter part of this --> document names
+bbc_tf_idf %>%
+  filter(document %in% c("001.txt","002.txt","003.txt","004.txt")) %>%
+  group_by(document) %>%
+  top_n(6) %>%
+  ungroup() %>%
+  mutate(term = reorder(term, tf_idf)) %>%
+  ggplot(aes(term, tf_idf, fill=document)) + geom_col() + coord_flip() + facet_wrap(~document, scale="free_y")
+
+
+# Looking at terms with top tf_idf scores across the entire corpus
+# 138 and 374 are the exact same article
+# 290 and 116 just have one word difference in the title
+bbc_tf_idf %>%
+  top_n(20) %>%
+  mutate(term = reorder(term, tf_idf)) %>%
+  ggplot(aes(term, tf_idf)) + geom_col(show.legend=FALSE) + coord_flip() + ggtitle("Top Tf-idf Terms from the BBC Corpus")
+```
+
+A bit more sentiment analysis
+```{r}
+bbc_tidy <- tidy(bbc_dtm)
+bbc_tidy
+
+# Look at most common positive and negative words in BBC Tech articles
+bbc_tidy %>%
+  inner_join(get_sentiments("bing"), by=c(term="word")) %>%
+  count(sentiment, term, wt=count) %>%
+  ungroup() %>%
+  filter(n >= 50) %>%
+  mutate(n = ifelse(sentiment == "negative", -n, n)) %>%
+  mutate(term = reorder(term, n)) %>%
+  ggplot(aes(term, n, fill = sentiment)) + geom_bar(stat="identity", show.legend=FALSE) + ylab("Contribution to sentiment") + coord_flip() + ggtitle("Most Common Sentiment Words in BBC Tech Articles")
+```
+
+Looking at most significant "sentimental words" in the BBC articles by using the AFINN lexicon
+```{r}
+bbc_tidy %>%
+  anti_join(stop_words, by = c(term="word")) %>%
+  count(term, document, sort = TRUE) %>%
+  inner_join(get_sentiments("afinn"), by=c(term="word")) %>%
+  group_by(term) %>%
+  summarise(contribution = sum(n*score)) %>%
+  top_n(10, abs(contribution)) %>%
+  mutate(term = reorder(term, contribution)) %>%
+  ggplot(aes(term, contribution)) + geom_col() + coord_flip()
+```
+
+Look at a new sentiment lexicon that has ten distinct emotions --> top ten words from each emotion
+```{r}
+# NOTE: look at weird words such as "wireless" as an angry emotion
+bbc_tidy %>%
+  anti_join(stop_words, by = c(term="word")) %>%
+  count(term, document, sort = TRUE) %>%
+  inner_join(get_sentiments("nrc"), by=c(term="word")) %>%
+  count(sentiment, term) %>%
+  group_by(sentiment) %>%
+  top_n(10) %>%
+  ungroup() %>%
+  mutate(term = reorder(term, nn)) %>%
+  ggplot(aes(term, nn, fill=sentiment)) + geom_col(show.legend=FALSE) + coord_flip() + facet_wrap(~sentiment, scale="free") + ggtitle("Exploring a Different Sentiment Lexicon")
+```
+
+
+Look at the most positive and negative articles overall
+```{r}
+bbc_sentiment_count <- bbc_tidy %>%
+  inner_join(get_sentiments("bing"), by=c(term="word")) %>%
+  count(sentiment, document) %>%
+  spread(sentiment, n)
+
+# Note: would be cooler if there were a keyword attached to each document 
+bbc_sentiment_count %>%
+  mutate(score = (positive - negative) / (positive + negative)) %>%
+  mutate(document = reorder(document, score)) %>%
+  top_n(20, abs(score)) %>%
+  ggplot(aes(document, score, fill=score>0)) + geom_col(show.legend = FALSE) + coord_flip()
+```
+
+Topic modeling
+```{r}
+library(topicmodels)
+
+# Build a model with four topics - an arbitrary number just for exploring
+bbc_lda <- LDA(bbc_dtm, k=4, control=list(seed=1234))
+
+bbc_topics <- tidy(bbc_lda, matrix = "beta")
+bbc_topics
+
+# Top 10 most common words within each topic
+bbc_topics %>%
+  anti_join(stop_words, by=c(term="word")) %>%
+  group_by(topic) %>%
+  top_n(10, beta) %>%
+  ungroup() %>%
+  mutate(term = reorder(term, beta)) %>%
+  ggplot(aes(term, beta, fill=factor(topic))) + geom_col(show.legend = FALSE) + facet_wrap(~ topic, scales = "free") + coord_flip() + ggtitle('Top 10 Most Common Words by Topic')
+
+# Probability with which each document will be classified as a specific topic
+groups_gamma <- tidy(bbc_lda, matrix="gamma")
+groups_gamma
+
+# Looking at how it assigned the first four articles
+# Three of them were topic four --> just chance?
+groups_gamma %>%
+  filter(document %in% c("001.txt","002.txt","003.txt","004.txt")) %>%
+  mutate(document = reorder(document, gamma*topic)) %>%
+  ggplot(aes(factor(topic), gamma)) + geom_boxplot() + facet_wrap(~document) + ggtitle("How well was each article assigned to a topic?")
+```
+
+
+
+Working on sentiment analysis issues...
+```{r}
+sentiment <- peterpan %>%
+  inner_join(get_sentiments("afinn")) %>%
+  group_by(score) %>%
+  count(word, sort=TRUE) %>%
+  ungroup() %>%
+  mutate(word_score = score*n)
+
+reverse <- negation_words %>%
+  mutate(negation_score = -(n*score)) %>%
+  arrange(desc(abs(negation_score))) %>%
+  mutate(word2 = reorder(word2, negation_score))
+
+
+new_sentiment <- sentiment %>%
+  inner_join(reverse, by=c(word="word2")) %>%
+  select(-n.x, -n.y, -score.x, -score.y) %>%
+  melt(value.name = "score")
+
+new_sentiment %>%
+  mutate(word = reorder(word, score)) %>%
+  ggplot(aes(word, score, fill=variable)) + geom_bar(stat="identity") + coord_flip() + ggtitle("Visualizing Sentiment Scores Affected by Negation")
+
+```
+
+
+Try the same process with the BBC articles
+```{r}
+BigramTokenizer <- function(x) unlist(lapply(ngrams(words(x), 2), paste, collapse = " "), use.names = FALSE)
+
+bbc_bigrams <- TermDocumentMatrix(corpus, control = list (tokenize = BigramTokenizer))
+
+bbc_bigrams <- tidy(bbc_bigrams)
+
+bbc_bigrams <- bbc_bigrams %>%
+  separate(term, c("word1", "word2"), sep = " ")
+
+# Remove any bigrams that include a stop word
+clean_bbc_bigram <- bbc_bigrams %>%
+  filter(!word1 %in% stop_words$word) %>%
+  filter(!word2 %in% stop_words$word) %>%
+  count(word1, word2, sort=TRUE)
+clean_bbc_bigram
+
+# Make them back into one two word piece instead of two one word pieces
+bbc_united_bigrams <- clean_bbc_bigram %>%
+  unite(term, word1, word2, sep = " ")
+```
+
+Using bigrams to see where sentiment analysis can go wrong
+```{r}
+negation <- c("not", "no", "never", "without")
+bbc_negation_words <- bbc_bigrams %>%
+  filter(word1 %in% negation) %>%
+  inner_join(get_sentiments("afinn"), by = c(word2 = "word")) %>%
+  count(word2, score, sort = TRUE) %>%
+  ungroup()
+bbc_negation_words
+
+bbc_sentiment <- bbc_tidy %>%
+  inner_join(get_sentiments("afinn"), by=c(term = "word")) %>%
+  group_by(score) %>%
+  count(term, sort=TRUE) %>%
+  ungroup() %>%
+  mutate(word_score = score*n)
+
+bbc_reverse <- bbc_negation_words %>%
+  mutate(negation_score = -(n*score)) %>%
+  arrange(desc(abs(negation_score))) %>%
+  mutate(word2 = reorder(word2, negation_score))
+
+
+bbc_new_sentiment <- bbc_sentiment %>%
+  inner_join(bbc_reverse, by=c(term="word2")) %>%
+  select(-n.x, -n.y, -score.x, -score.y) %>%
+  melt(value.name = "score")
+
+bbc_new_sentiment %>%
+  mutate(term = reorder(term, score)) %>%
+  ggplot(aes(term, score, fill=variable)) + geom_bar(stat="identity") + coord_flip()
+```
+
+TWITTER
+```{r}
+# WRITE TWEETS INTO A FILE NEXT TIME
+library(twitteR)
+
+# Change the next four lines based on your own consumer_key, consume_secret, access_token, and access_secret. 
+consumer_key <- "yZhVQ6Ns8nW3tlWThtv0jnw2I"
+consumer_secret <- "j9Z0dMRZ7nSYGUpk8x7Af4wFa9JlcyHF0vmLSwigSk8jUF5KLu"
+access_token <- "484060475-KkM4xHd3ZFzPfPjIM1vVNpgGSiVq0EXHo40UKsGA"
+access_secret <- "BGXeiy7eyjHYvHT8Ql727ge1RrlTjbqpzZ21lbI5mQaWW"
+
+setup_twitter_oauth(consumer_key, consumer_secret, access_token, access_secret)
+tw = twitteR::searchTwitter('#SOTU', n = 1e4, since = '2018-1-30', retryOnRateLimit = 1e3)
+tweets = twitteR::twListToDF(tw)
+```
+
+```{r}
+library(lubridate)
+
+glimpse(tweets)
+
+tweets <- tweets %>%
+  mutate(created = ymd_hms(created))
+
+ggplot(tweets, aes(created)) + geom_histogram(position="identity", bins=20, show.legend=FALSE, fill="plum") + ggtitle("Distribution of Tweets including Donald and Hillary Hashtags")
+```
+
+```{r}
+library(stringr)
+replace_reg <- "https://t.co/[A-Za-z\\d]+|http://[A-Za-z\\d]+|&amp;|&lt;|&gt;|RT|https" 
+unnest_reg <- "([^A-Za-z_\\d#@']|'(?![A-Za-z_\\d#@]))"
+
+tidy_tweets <- tweets %>%
+  filter(!str_detect(text, "^RT")) %>%
+  mutate(text = str_replace_all(text, replace_reg, "")) %>%
+  unnest_tokens(word, text, token = "regex", pattern=unnest_reg) %>%
+  filter(!word %in% stop_words$word, str_detect(word, "[a-z]"))
+
+frequency <- tidy_tweets %>%
+  count(word, sort = TRUE) %>%
+  cbind(tidy_tweets %>%
+              summarise(total = n())) %>%
+  mutate(freq = n/total)
+
+frequency %>%
+  filter(freq > 0.0025) %>%
+  mutate(word = reorder(word, freq)) %>%
+  ggplot(aes(word, freq)) + geom_col(fill="lightblue") + coord_flip()
+```
+
+```{r}
+words_by_time <- tidy_tweets %>%
+  filter(!str_detect(word, "^@")) %>%
+  mutate(time_floor = floor_date(created, unit = "1 day")) %>%
+  count(time_floor, word) %>%
+  ungroup() %>%
+  group_by(time_floor) %>%
+  mutate(time_total = sum(n)) %>%
+  group_by(word) %>%
+  mutate(word_total = sum(n)) %>%
+  ungroup() %>%
+  rename(count = n) %>%
+  filter(word_total > 5)
+
+nested_data <- words_by_time %>%
+  nest(-word)
+
+library(purrr) 
+nested_models <- nested_data %>%
+  mutate(models = map(data, ~glm(cbind(count, time_total) ~ time_floor, ., family = "binomial")))
+
+library(broom)
+slopes <- nested_models %>%
+  unnest(map(models, tidy)) %>%
+  filter(term=="time_floor") %>%
+  mutate(adjusted.p.value = p.adjust(p.value))
+
+top_slopes <- slopes %>%
+  filter(adjusted.p.value < 0.1)
+
+words_by_time %>%
+  inner_join(slopes, by = "word") %>%
+  filter(p.value < 0.3) %>%
+  ggplot(aes(time_floor, count/time_total, color=word)) + geom_line(size = 1) + labs(x=NULL, y="Word Frequency")
+```
+
+END TWITTER SECTION
+
+```{r}
+articles <- read.csv('Articles.csv')
+
+articles <- articles %>%
+  mutate(Article = as.character(Article), Date = mdy(Date), Heading = as.character(Heading))
+
+articles <- articles %>%
+  unnest_tokens(word, Article) %>%
+  anti_join(stop_words)
+
+bbc_sports_corpus <- Corpus(DirSource('bbc/sport')) %>%
+  tm_map(stripWhitespace) %>%
+  tm_map(removeNumbers) %>%
+  tm_map(removePunctuation) %>%
+  tm_map(content_transformer(tolower))
+
+bbc_sports_dtm <- DocumentTermMatrix(bbc_sports_corpus, control = list(weighting = weightTf))
+bbc_sports_dtm
+
+bbc_sports <- tidy(bbc_sports_dtm) %>%
+  mutate(group = "BBC") %>%
+  anti_join(stop_words, by=c(term="word"))
+
+pakistan_sports <- articles %>%
+  filter(NewsType == "sports") %>%
+  select(-NewsType) %>%
+  count(Heading, word, sort=TRUE) %>%
+  rename(term = "word", count = "n", document = "Heading") %>%
+  mutate(group = "Pakistan") 
+
+sports <- rbind(bbc_sports, pakistan_sports)
+
+# Most common words from each source
+sports %>%
+  group_by(group) %>%
+  count(term, sort=TRUE) %>%
+  top_n(15) %>%
+  ungroup() %>%
+  mutate(term = reorder(term, n)) %>%
+  ggplot(aes(term, n, fill=group)) + geom_col(show.legend=FALSE) + coord_flip() + facet_wrap(~group, scales="free_y") + ggtitle("Most Common Words From Each Source")
+
+sports_words <- sports %>%
+  count(group, term, sort=TRUE) %>%
+  ungroup()
+
+total_words_sports <- sports_words %>%
+  group_by(group) %>%
+  summarise(total = sum(n))
+
+sports_words <- left_join(sports_words, total_words_sports)
+
+# This step actually gets the tf-idf scores
+sports_words <- sports_words %>%
+  bind_tf_idf(term, group, n) 
+
+
+sports_words <- sports_words %>%
+  mutate(term = gsub('[0-9]+', '', sports_words$term)) %>%
+  filter(term != '' & term != '.' & term != ',')
+
+# Highest tf-idf scores for each news source
+sports_words %>%
+  group_by(group) %>%
+  arrange(desc(tf_idf)) %>%
+  top_n(10) %>%
+  ungroup() %>%
+  mutate(term = factor(term, levels = rev(unique(term)))) %>%
+  mutate(group = as.factor(group)) %>%
+  ggplot(aes(term, tf_idf, fill = group)) +
+  geom_col() + labs(x=NULL, y = "tf-idf") + coord_flip() + facet_wrap(~group, scales="free_y")
+
+
+# Looking at words with high tf-idf scores across both news sources
+sports_words %>%
+  arrange(desc(tf_idf)) %>%
+  mutate(term = factor(term, levels = rev(unique(term)))) %>%
+  top_n(20) %>%
+  mutate(group = as.factor(group)) %>%
+  ggplot(aes(term, tf_idf, fill = group)) +
+  geom_col() + labs(x=NULL, y = "tf-idf") + coord_flip() + ggtitle("Terms with Higest Tf-Idf Scores")
+
+
+sports_sentiment_count <- sports %>%
+  inner_join(get_sentiments("bing"), by=c(term="word")) %>%
+  count(sentiment, document, group) %>%
+  spread(sentiment, n)
+
+# "Most sentimental" articles --> can tell that the Pakistan newspaper writes in a bit more of a positive light; again, this would be cooler if we had an example like groups of articles broken down by company
+sports_sentiment_count %>%
+  mutate(score = (positive - negative) / (positive + negative)) %>%
+  mutate(document = reorder(document, score)) %>%
+  group_by(group) %>%
+  top_n(20, abs(score)) %>%
+  ungroup() %>%
+  ggplot(aes(document, score, fill=score>0)) + geom_col(show.legend = FALSE) + coord_flip() + facet_wrap(~group, scales="free_y") + theme(axis.text.y=element_blank()) + ggtitle('20 Most Sentimental Articles From Each Source')
+
+sports_contributions <- sports %>%
+  inner_join(get_sentiments("afinn"), by=c(term="word")) %>%
+  group_by(term) %>%
+  summarise(occurences = n(), contribution = sum(score))
+
+# Most positive and negative words just by sheer count
+sports_contributions %>%
+  top_n(25, abs(contribution)) %>%
+  mutate(term = reorder(term, contribution)) %>%
+  ggplot(aes(term, contribution, fill = contribution > 0)) + geom_col(show.legend = FALSE) + coord_flip() + ggtitle("Top 25 Most Common Sentimental Words in Sports News")
+
+words_by_source <- sports %>%
+  count(group, term, sort=TRUE) %>%
+  ungroup()
+
+top_sentiment_words <- words_by_source %>%
+  inner_join(get_sentiments("afinn"), by=c(term= "word")) %>%
+  mutate(contribution = score*n / sum(n))
+
+# Standarizing for the number of words you have
+top_sentiment_words %>%
+  group_by(group) %>%
+  arrange(desc(abs(contribution))) %>%
+  top_n(10) %>%
+  ungroup() %>%
+  mutate(term = reorder(term, contribution)) %>%
+  ggplot(aes(term, contribution, fill = group)) + geom_col(show.legend=FALSE) + coord_flip() + facet_wrap(~group, scales="free_y")
+```
+
+
+```{r}
+sports_frequency <- sports %>%
+  group_by(group) %>%
+  count(term, sort = TRUE) %>%
+  left_join(sports %>%
+              group_by(group) %>%
+              summarise(total = n())) %>%
+  mutate(freq = n/total)
+
+sports_frequency <- sports_frequency %>%
+  select(group, term, freq) %>%
+  spread(group, freq) %>%
+  arrange(BBC, Pakistan)
+
+library(scales)
+
+ggplot(sports_frequency, aes(BBC, Pakistan)) +  geom_text(aes(label=term), check_overlap = TRUE, vjust = 1.5) + scale_x_log10(labels = percent_format()) + scale_y_log10(labels = percent_format()) + geom_abline(color="plum") + ggtitle("Comparing Word Frequency between BBC & Pakistan News")
+```
+
+
+
+WRITING FUNCTIONS TO TAKE IN TEXT FILES
+
+CSV
+```{r}
+csv_file <- read.csv('userinput.csv')
+
+# Problem here is that we need the column name to unnest (it will be different for every csv file)
+my_csv <- csv_file %>%
+  unnest_tokens(word, column_to_unnest) %>%
+  anti_join(stop_words)
+```
+
+TXT
+```{r}
+# One file
+txt_raw <- read.delim('userinput.txt', header=FALSE)
+
+txt_testing <- VCorpus(VectorSource(txt_raw)) %>%
+  tm_map(stripWhitespace) %>%
+  tm_map(removeNumbers) %>%
+  tm_map(removePunctuation) %>%
+  tm_map(content_transformer(tolower)) %>%
+  tm_map(removeWords, stopwords("en"))
+
+txt_dtm <- DocumentTermMatrix(txt_testing, control = list(weighting = weightTf))
+txt_dtm
+
+txt_tidy <- tidy(txt_dtm)
+txt_tidy
+
+# Corpus (really just anything more than one document)
+txt_corpus <- VCorpus(DirSource('bbc/tech')) %>%
+  tm_map(stripWhitespace) %>%
+  tm_map(removeNumbers) %>%
+  tm_map(removePunctuation) %>%
+  tm_map(content_transformer(tolower)) %>%
+  tm_map(removeWords, stopwords("en"))
+
+txt_dtm_corpus <- DocumentTermMatrix(txt_corpus, control = list(weighting = weightTf))
+txt_dtm_corpus
+
+txt_tidy_corpus <- tidy(txt_dtm_corpus)
+txt_tidy_corpus
+```
+
+WEB SCRAPING (they provide the URL) / HTML
+```{r}
+library(rvest)
+
+# Reading in an HTML file should be the same but it would be a file name instead of a URL
+web_file <- read_html('https://en.wikipedia.org/wiki/Text_mining')
+
+# This extracts the text within paragraph elements of the html code
+# Do we want to think about extracting other things such as bulleted lists?
+# http://bradleyboehmke.github.io/2015/12/scraping-html-text.html
+
+my_web <- web_file %>%
+  html_nodes("p") %>%
+  html_text()
+
+web_data <- as.data.frame(my_web) %>%
+  mutate(my_web = as.character(my_web)) %>%
+  unnest_tokens(word, my_web) %>%
+  anti_join(stop_words)
+```
