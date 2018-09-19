@@ -54,3 +54,19 @@ User Input:
     - Sentiment analysis: tons of different types of bar charts
     - Tf-idf scores across documents: bar charts
     - Correlation and cooccurrence: bar charts and network graphs
+    
+    
+    
+Additional Notes
+- What questions are important in terms of the goals of iNZight?
+    - 1. make things really easy for people to get and see things that are useful to them
+    - 2. isolate places where human input is required and try to automate everything else
+    - 3. ease transition from point and click system to coding complex procedures
+- How would be measure ‘effective’ learning?
+    - Ease of use
+    - Think about: what did I want the module to teach the user? Did it work?
+    - Action Research - Stephanie Budgett
+- Possible Resources
+  - Statistics Education Research Journal
+    - Good for research on students
+  - Journal of Statistics Education
