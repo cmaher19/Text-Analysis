@@ -30,4 +30,13 @@
   * TAGS Course: https://www.futurelearn.com/courses/social-media-analytics
 October 15 - Free! But also about social media more than general text
   * https://www.coursera.org/learn/text-mining#syllabus - some content for free
+  
+  
+  
+ **INZight Links**
+ * The lighter version: https://github.com/iNZightVIT/Lite/tree/master/panels
+ * My older repo with Chris: https://github.com/cmaher19/textmining
+ 
+ 
+ 
 
