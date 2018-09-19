@@ -156,7 +156,7 @@ library(reshape2)
 # Simple word cloud of most common words
 peterpan %>%
   count(word) %>%
-  with(wordcloud(word, n, max.words = 50))
+  with(wordcloud(word, n, max.words = 50, scale=c(2, 0.5)))
 
 
 # Cooler word cloud with most common words by sentiment
@@ -166,7 +166,7 @@ peterpan %>%
   inner_join(get_sentiments("bing")) %>%
   count(word, sentiment, sort = TRUE) %>%
   acast(word ~ sentiment, value.var = "n", fill=1) %>%
-  comparison.cloud(colors = c("orchid", "seagreen2"), max.words = 100, scale = c(2.5,0.5))
+  comparison.cloud(colors = c("orchid", "seagreen2"), max.words = 75, scale = c(2,0.5))
 
 
 # Remove darling for this one and see what happens
@@ -175,7 +175,7 @@ peterpan %>%
   filter(word != "darling") %>%
   count(word, sentiment, sort = TRUE) %>%
   acast(word ~ sentiment, value.var = "n", fill=1) %>%
-  comparison.cloud(colors = c("orchid", "seagreen2"), max.words = 100, scale = c(2.5,0.5))
+  comparison.cloud(colors = c("orchid", "seagreen2"), max.words = 75, scale = c(1,0.5))
 ```
 
 TF-IDF Section
