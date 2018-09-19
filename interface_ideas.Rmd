@@ -1,0 +1,56 @@
+---
+title: "interface_ideas"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+Interface Ideas
+
+User Input:
+  - They choose a file from their computer and somehow my function determines which files type it is and then reads it in accordingly
+    - When they choose a file to upload, does R receive the whole file pathway or how does that work? Does uploading the file upload it into R?
+    - Ask them to specify whether they are reading in one file or multiple files?
+      - Just one example of there needing to be a differentiation: if you only have one .txt file to read in, you need to specify a header arguments whereas the header argument throws an error if you have multiple .txt files (a corpus)
+    - What type of files is it? Is it a book where we'd want to create a line number variables?
+      - Are there other types of documents where we'd want to preserve some of the metadata?
+        - ex: may want to break down by the date a news article was published if you have a bunch over the course of some period of time
+          - same thing goes for tweets - how does word usage change over time?
+    - Think about having some feature where they can enter their Twitter username and it will pull their tweets
+      - I'm not sure if this is possible with the API but something like it could be possible with the Twitter google docs page I found (FIND LINK) that pulls tweets automatically every hour
+    - Web scraping: should we have a place where they can paste a URL and we draw in the file from there?
+      - Questions about wha text to take from a webpage
+        - Just html paragraph elements? - this would leave out bulleted lists that can contain important information but it is an easy way to do it
+  - Display raw data to user
+    - To make tokens from a csv file (or really any file with more than one column of data), the user needs to know which column to tokenize
+    - Are there words that we want to add to the stop word list (have them removed) OR that we want to keep (and would have otherwise been removed by the stop words)?
+      - Will they be able to see the stop word list beforehand?
+  - Actual visualizations: which ones do we want?
+    - For books: would we want to be able to break it up by chapter?
+      - Have some feature where you can choose what to split it up by (lines or chapters) so that we can create graphs like the Peter Pan sentiment graphs
+    - Word frequencies, word clouds, sentiment analysis, network graphs for concurrence and correlation, topic modeling
+  - Sentiment analysis
+    - Do we want to ahve a couple of options of lexicons for the user to choose from (and compare between)? Do we want to use just the ones I've been using or should I find some more specialized ones to offer as well (finance lexicons, etc)
+    - Have an option to specify words to exclude (like Darling in Peter Pan)
+      - Will they be able to see the lexicon beforehand?
+      - Should there be some prompting for the user to actually look at the output and see that the words make sense?
+  - What types of explanations should I have throughout the document?
+    - A description of text analysis as a whole and how it canbe useful to us
+    - Maybe things you should know about your data before you begin?
+      - What do you want to tokenize?
+      - Do you have variables? Or is your file plain text?
+      - Are there specific words that you should be weary of throughout your analysis?
+    - Sentiment analysis
+      - Will need to explain sentiment lexicons
+      - Some description or information about breaking documents down into sections for analysis (by chapter or groups of lines, etc)
+    - Tf-idf score
+      - May want to look back at resources from Michael Barlow (linguistics guy at UoA that Chris and I met with) and see which statistics they use to measure a term's "importance"
+    - Further things you can do with text analysis and its application to research/academics
+  - Which features are most important to include?
+    - Word frequency types of things: bar charts, scatterplots, wordclouds
+    - Identifying themes throughout the document: can show clustering through bar charts and boxplots
+    - Sentiment analysis: tons of different types of bar charts
+    - Tf-idf scores across documents: bar charts
+    - Correlation and cooccurrence: bar charts and network graphs
