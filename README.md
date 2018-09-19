@@ -1,9 +1,9 @@
 # Maher-Cassidy-thesis
 
-**Text Analysis Special Topics Timeline (14ish weeks in the semester)**
+**Text Analysis Special Topics Timeline (13 weeks in the semester)**
 * Meet once a week for ~1 hour
-* Schedule 1-2 hours to work on it per day
-* Maybe spill over into January term / comps project
+* Schedule 30-45 minutes to work on it 6x/week (4.5 hours per week)
+* Maybe spill over into January term / comps project (proposal due Wednesday before Thanksgiving)
 
 **Weeks 1-3**
 * Look at other iNZight packages and see how they wrote theirs - 2 weeks?
@@ -30,4 +30,13 @@
   * TAGS Course: https://www.futurelearn.com/courses/social-media-analytics
 October 15 - Free! But also about social media more than general text
   * https://www.coursera.org/learn/text-mining#syllabus - some content for free
+  
+  
+  
+ **INZight Links**
+ * The lighter version: https://github.com/iNZightVIT/Lite/tree/master/panels
+ * My older repo with Chris: https://github.com/cmaher19/textmining
+ 
+ 
+ 
 
