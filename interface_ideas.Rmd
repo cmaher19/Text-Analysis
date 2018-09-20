@@ -35,6 +35,7 @@ User Input:
     - Have an option to specify words to exclude (like Darling in Peter Pan)
       - Will they be able to see the lexicon beforehand?
       - Should there be some prompting for the user to actually look at the output and see that the words make sense?
+    - http://jacobsimmering.com/2016/11/15/tidytext/ this guy did unique removal and also just has more good examples of what you can do with the tidytext package
   - What types of explanations should I have throughout the document?
     - A description of text analysis as a whole and how it canbe useful to us
     - Maybe things you should know about your data before you begin?
@@ -114,13 +115,6 @@ What wrangling steps do you have to take with each type in order to clean them?
   - Removing punctuation, numbers, stop words, everything to lower case, etc
   - Join on ‘extras’ → sentiment lexicons, total word counts 
 
-What external data do we have to draw in?
-  - Stop words
-    - Have some option for designating your own stop words
-    - http://jacobsimmering.com/2016/11/15/tidytext/ this guy did unique removal and also just has more good examples of what you can do with the tidytext package
-  - Lexicons
-    - Have some option for ignoring words → “Darling” example in Peter Pan
-    - How many lexicons do we want to have available to choose from?
 
 Ideas for next steps…
   - Writing functions for taking in different file types
