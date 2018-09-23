@@ -1,0 +1,70 @@
+---
+title: "text"
+runtime: shiny
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+```
+
+This R Markdown document is made interactive using Shiny. Unlike the more traditional workflow of creating static reports, you can now create documents that allow your readers to change the assumptions underlying your analysis and see the results immediately. 
+
+To learn more, see [Interactive Documents](http://rmarkdown.rstudio.com/authoring_shiny.html).
+
+## Inputs and Outputs
+
+You can embed Shiny inputs and outputs in your document. Outputs are automatically updated whenever inputs change.  This demonstrates how a standard R plot can be made interactive by wrapping it in the Shiny `renderPlot` function. The `selectInput` and `sliderInput` functions create the input widgets used to drive the plot.
+
+```{r message=FALSE}
+library(tidytext)
+library(tidyverse)
+library(gutenbergr)
+library(urltools)
+library(shinythemes)
+library(shiny)
+```
+
+
+```{r message=FALSE}
+peterpan <- gutenberg_download(16) %>%
+  mutate(linenumber=row_number()) %>%
+  unnest_tokens(word, text) %>%
+  anti_join(stop_words)
+```
+
+
+```{r}
+shinyApp(
+  ui <- fluidPage(theme=shinytheme("slate"), 
+  span(titlePanel('Text Analysis'), style="color:#F9D90A"),
+  sidebarLayout(position='right',
+    sidebarPanel(
+      h4(textOutput('intro'))
+  ),
+  mainPanel(
+      #span(h3("Text Analysis"), style="color:#F9D90A"),
+      selectInput("variable", "Variable:",
+                c("Gutenberg ID" = "gutenberg_id",
+                  "Line Number" = "linenumber",
+                  "Word" = "word")),
+    tableOutput("data"),
+    plotOutput("plot1")
+    )    
+  )
+  ),
+  server = function(input, output) {
+    output$intro <- renderText("Quick explanation of text analysis.")
+    output$data <- renderTable({
+      peterpan[, c("word", input$variable), drop = FALSE]
+    }, rownames = TRUE)
+    output$plot1 <- renderPlot({
+      peterpan %>%
+        count(word) %>%
+        filter(n > 50) %>%
+        mutate(word = reorder(word, n)) %>%
+        ggplot(aes(word, n)) + geom_col() + coord_flip() + ggtitle('Most Common Words in Peter Pan')
+    })
+  }
+)
+```
