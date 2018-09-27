@@ -1,0 +1,25 @@
+---
+title: "shiny_extras"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+Stuff I am probably not using for the Shiny app
+```{r}
+# in ui
+span(h3("Text Analysis"), style="color:#F9D90A"),
+      selectInput("variable", "Variable:",
+                c("Gutenberg ID" = "gutenberg_id",
+                  "Line Number" = "linenumber",
+                  "Word" = "word")),
+    tableOutput("data"),
+
+# in server
+output$data <- renderTable({
+      peterpan[, c("word", input$variable), drop = FALSE]
+    }, rownames = TRUE)
+```
+    
