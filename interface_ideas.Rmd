@@ -121,4 +121,19 @@ Ideas for next steps…
     - Try to cover as many bases as possible
     - Really just a lot of testing different types of files with varying structural differences to see how well they can all be cleaned
   - The main point for the next phase: write code that can “tidy” as many different inputs as possible
+  
+  
+  
+  
+  Possible additions to Shiny:
+  - Text Analytics in R for Students of Literature (Jockers) - look in library
+    - LDA Buffet - learn about this for comps p. 163-167
+    - Expository topic, application, interpretation
+    - Find recent paper
+    - Statistical Analysis and Data Mining - search here for articles (look @ table of contents)
+  - Pre curated data 
+    - Peter Pan - one file per chapter
+    - Amherst College Course Catalog - one file per department
+    - Emily Dickinson - one file per poem
+  - Create option to clean up data
 
