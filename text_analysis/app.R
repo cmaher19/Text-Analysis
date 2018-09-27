@@ -22,7 +22,8 @@ ui <- dashboardPage(
   dashboardSidebar(
     sidebarMenu(
       menuItem("Introduction", tabName = "introduction", icon = icon("dashboard")),
-      menuItem("Data Upload", tabName = "data_upload", icon = icon("th"))
+      menuItem("Data Upload", tabName = "data_upload", icon = icon("th")),
+      menuItem("Plots", tabName = "plots", icon = icon("dashboard"))
     )
   ),
   
@@ -30,44 +31,40 @@ ui <- dashboardPage(
     tabItems(
       # First tab content
       tabItem(tabName = "introduction",
-              box(textOutput("thought1"),
-              textOutput("thought2"))
+              box(
+                title = "Introduction", status = "primary", solidHeader = TRUE,
+                collapsible = TRUE,
+                box(textOutput("thought1")),
+                box(textOutput("thought2"))
+              )
+              
       ),
       
       # Second tab content
       tabItem(tabName = "data_upload",
               fluidRow(box(
                 # got this from the help menu for fileInput
-                fileInput("file1", "Please Choose a Text File", accept = c("text/csv", "text/comma-separated-values,
+                fileInput("file1", "Please Choose a CSV/Text File", accept = c("text/csv", "text/comma-separated-values,
                                                                            text/plain", ".csv")),
-                radioButtons("disp", "Display",
+                radioButtons("disp", "How much raw data would you like to see?",
                              choices = c('First few lines' = "head",
                                          'Every line' = "all"),
-                             selected = "head")
-                )),
-              box(tableOutput("contents")),
-              fluidRow(
-                box(checkboxInput('header', 'Header', TRUE)),
-                box(checkboxGroupInput("inCheckboxGroup",
-                                       "Checkbox group input:",
-                                       c("label 1" = "option1",
-                                         "label 2" = "option2"))),
-                box(radioButtons('sep', 'Separator',
-                                 c(Comma=',',
-                                   Semicolon=';',
-                                   Tab='\t'),
-                                 ',')),
-                box(radioButtons('quote', 'Quote',
-                                 c(None='',
-                                   'Double Quote'='"',
-                                   'Single Quote'="'"),
-                                 '"')),
-                box(uiOutput("choose_columns"))
-              )
-      ))
-
-  )
-  )
+                             selected = "head")),
+                box(title="Are there variables in the first line?", checkboxInput('header', 'Header', TRUE)),
+                box(selectInput("inSelect",
+                                "Choose a tokenizer variable:",
+                                c("label 1" = "option1",
+                                  "label 2" = "option2")))
+                ),
+              box(title="Raw Data", tableOutput("contents"))
+              
+              ),
+      tabItem(tabName="plots",
+              fluidRow(box(plotOutput("freqPlot")))
+      )
+      )
+    )
+)
 
 
 server <- function(input, output, session) {
@@ -81,8 +78,7 @@ server <- function(input, output, session) {
   data_set <- reactive({
     req(input$file1)
     inFile <- input$file1
-    data_set<-read.csv(inFile$datapath, header=input$header, 
-                       sep=input$sep, quote=input$quote)
+    data_set<-read.csv(inFile$datapath, header=input$header)
   })
   
   output$contents <- renderTable({
@@ -99,31 +95,24 @@ server <- function(input, output, session) {
     dsnames <- names(data_set())
     cb_options <- list()
     cb_options[ dsnames] <- dsnames
-    updateCheckboxGroupInput(session, "inCheckboxGroup",
-                             label = "Check Box Group",
+    updateSelectInput(session, "inSelect",
+                             label = "Variables",
                              choices = cb_options,
                              selected = "")
   })
   
-  output$choose_dataset <- renderUI({
-    selectInput("dataset", "Data set", as.list(data_sets))
+  output$freqPlot <- renderPlot({
+    data_set() %>%
+      mutate(text = as.character(text)) %>%
+      unnest_tokens(word, text) %>%
+      anti_join(stop_words) %>%
+      count(word) %>%
+      filter(n > 50) %>%
+      mutate(word = reorder(word, n)) %>%
+      ggplot(aes(word, n)) + geom_col(fill="purple") + coord_flip() + ggtitle('Most Common Words') +
+      ylab("Count") + xlab("Word")
   })
-  
-  # Check boxes
-  output$choose_columns <- renderUI({
-    # If missing input, return to avoid error later in function
-    if(is.null(input$dataset))
-      return()
-    
-    # Get the data set with the appropriate name
-    
-    colnames <- names(contents)
-    
-    # Create the checkboxes and select them all by default
-    checkboxGroupInput("columns", "Choose columns", 
-                       choices  = colnames,
-                       selected = colnames)
-  })
+
 }
 
 shinyApp(ui = ui, server = server)

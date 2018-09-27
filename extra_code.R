@@ -93,4 +93,45 @@ output$plot5 <- renderPlot({
   bind_rows(pp_afinn, pp_bing) %>%
     ggplot(aes(index, sentiment, fill=method)) + geom_col(show.legend = FALSE) + 
     facet_wrap(~method, ncol = 1, scales = "free_y") + ggtitle("Comparing Sentiment Lexicons for Peter Pan")
+  
+  
+  
+  
+  ######
+  dsnames <- c()
+  data_set <- reactive({
+    req(input$file1)
+    inFile <- input$file1
+    data_set<-read.csv(inFile$datapath, header=input$header, 
+                       sep=input$sep, quote=input$quote)
+  })
+  box(radioButtons('sep', 'Separator',
+                   c(Comma=',',
+                     Semicolon=';',
+                     Tab='\t'),
+                   ',')),
+  box(radioButtons('quote', 'Quote',
+                   c(None='',
+                     'Double Quote'='"',
+                     'Single Quote'="'"),
+                   '"')),
 })
+
+
+
+
+# box(uiOutput("choose_token")),
+# Check boxes
+# output$choose_token <- renderUI({
+# If missing input, return to avoid error later in function
+#  if(is.null(input$dataset))
+#   return()
+
+# Get the data set with the appropriate name
+
+#colnames <- names(contents)
+
+# Create the input and select them all by default
+#selectInput("token", "Choose a token variable:", 
+#                  choices  = colnames)
+#})
