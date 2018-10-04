@@ -6,6 +6,32 @@ output: pdf_document
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 ```
+INTERFACE IDEAS
+Do we want the user to be able to:
+- Upload multiple files
+- Create a corpus
+- Options to remove/change/create variables
+- Option to remove a certain number of lines - i.e. remove unwanted metadata, table of contents, etc
+- Add/remove words to stop words list
+- Choose which plots to see
+- Remove words from sentiment lexicons - e.g. “Darling” counts as positive word in sentiment analysis, but is actually just a family name in Peter Pan
+- Explanations automatically come up or should they be hovered over or something
+- Choose token - one word, bigram, etc
+- Choose number of words in word cloud
+- Score cutoffs in 
+
+More general things to think about:
+- Twitter capabilities
+- Web scraping - paste URL and it pulls text
+- Additional, more specialized lexicons
+- Separate data into files by chapter, date, etc (think of toy examples here)
+
+Shiny additions:
+- Peter Pan - one file per chapter
+- Amherst Course Catalog - one file per department
+- Emily Dickinson - one file per poem
+
+
 
 User Input:
   - They choose a file from their computer and somehow my function determines which files type it is and then reads it in accordingly
