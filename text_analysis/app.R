@@ -9,16 +9,13 @@
 
 library(shiny)
 library(shinydashboard)
+library(shinythemes)
 library(tidytext)
 library(tidyverse)
-library(gutenbergr)
-library(urltools)
-library(shinythemes)
 library(widyr)
 library(igraph)
 library(ggraph)
 
-# Might want to display raw data - offer option for removing lines that don't contain the actual text?
 
 ui <- dashboardPage(
   dashboardHeader(title="Text Analysis"),
@@ -89,7 +86,8 @@ ui <- dashboardPage(
               fluidRow(box(title="Choose a CSV/Text File", status = "primary", solidHeader =TRUE,
                            collapsible = TRUE,
                            # got this from the help menu for fileInput
-                           fileInput("file1", label = NULL,
+                           # ADD OPTION TO TAKE IN MULTIPLE FILES
+                           fileInput("file1", label = NULL, multiple = TRUE,
                                      accept = c("text/csv", "text/comma-separated-values,text/plain", ".csv")),
                            checkboxInput('header', 'Check box if there are variable names in the first line.', TRUE),
                            radioButtons("disp", "How much raw data would you like to see?",
@@ -111,11 +109,15 @@ ui <- dashboardPage(
       ),
       
       tabItem(tabName = "to_know",
-              fluidRow(box(title="Choose a token variable", status = "primary", solidHeader = TRUE,
+              fluidRow(box(title = "Choose a token variable", status = "primary", solidHeader = TRUE,
                            collapsible = TRUE, 
                            selectInput("inSelect", label=NULL,
                                        c("Variable 1" = "option1",
-                                         "Variable 2" = "option2"))))
+                                         "Variable 2" = "option2")))),
+              fluidRow(box(title = "Stop Words", status = "primary", solidHeader = TRUE,
+                           collapsible = TRUE,
+                           textInput("stopwords", "Are there any words you'd like to manually remove from the text?
+                                     Please enter them here.")))
       ),
       
       # Frequency plots content
@@ -124,7 +126,7 @@ ui <- dashboardPage(
                            collapsible = TRUE,
                            plotOutput("freqPlot"),
                            sliderInput("freq_count", "Change the minimum frequency count:", 
-                                       min = 0, max = 200, value = 50)),
+                                       min = 0, max = 500, value = 50)),
                        box(title = "Wordcloud", status = "primary", solidHeader = TRUE,
                            collapsible = TRUE, 
                            plotOutput("simple_wordcloud"),
@@ -134,9 +136,17 @@ ui <- dashboardPage(
       
       # Sentiment analysis plots content
       tabItem(tabName = "sentiment_plots",
+              fluidRow(box(title = "Remove Sentiment Words", status = "primary", solidHeader = TRUE,
+                           collapsible = TRUE,
+                           textInput("sentimentwords", "Are there any words you'd like to manually remove from the text
+                                      for sentiment analysis? For instance, 'darling' has a positive sentiment but is also
+                                      the family name in Peter Pan, so we would want to remove it. Please enter your words
+                                      here."))),
               fluidRow(box(title = "AFINN Sentiments", status = "primary", solidHeader = TRUE,
                            collapsible = TRUE,
-                           plotOutput("afinn_sentiment")),
+                           plotOutput("afinn_sentiment"),
+                           sliderInput("word_score", "Keep word scores with absolute value greater than:", 
+                                       min = 0, max = 100, value = 25)),
                        box(title = "Bing Sentiments", status = "primary", solidHeader = TRUE,
                            collapsible = TRUE,
                            plotOutput("bing_sentiment"))),
@@ -159,16 +169,21 @@ ui <- dashboardPage(
       tabItem(tabName = "advanced_plots",
               fluidRow(box(title = "Network Graph", status = "primary", solidHeader = TRUE,
                            collapsible = TRUE,
-                           plotOutput("network")),
+                           plotOutput("network"),
+                           sliderInput("cooccur", "Change the minimum number of cooccurrences:", 
+                                       min = 0, max = 200, value = 10)),
                        box(title = "Co-occurrence Count", status = "primary", solidHeader = TRUE,
                            collapsible = TRUE,
                            tableOutput("count_table"))),
               fluidRow(box(title = "Correlation Tables", status = "primary", solidHeader = TRUE,
                            collapsible = TRUE,
+                           textInput("corr_words", "I want to see correlations with the word..."),
                            plotOutput("corr_comparison")),
                        box(title = "Correlation Network Graph", status = "primary", solidHeader = TRUE,
                            collapsible = TRUE,
-                           plotOutput("corr_network")))
+                           plotOutput("corr_network"),
+                           sliderInput("corr", "Change the minimum correlation:", 
+                                       min = 0, max = 1, value = 0.2)))
       )
     )
   )
@@ -207,11 +222,14 @@ server <- function(input, output, session) {
   output$general8 <- renderText("b. Amherst College Course Catalog")
   output$general9 <- renderText("c. Emily Dickinson Poems")
   
-  
   data_set <- reactive({
+    # got this code from this website:
+    # https://itsalocke.com/blog/r-quick-tip-upload-multiple-files-in-shiny-and-consolidate-into-a-dataset/
     req(input$file1)
-    inFile <- input$file1
-    data_set<-read.csv(inFile$datapath, header=input$header)
+    data_set <- as.data.frame(rbindlist(lapply(input$file1$datapath, fread),
+              use.names = TRUE, fill = TRUE))
+    
+    #data_set<-read.csv(input$file1$datapath, header=input$header)
   })
   
   observeEvent(
@@ -230,10 +248,10 @@ server <- function(input, output, session) {
   new_data <- eventReactive(
     input$update, {
       if(input$no_removal == FALSE) {
-        data <- data_set()[-c(input$start_line:input$end_line), ]
+        data_set()[-c(input$start_line:input$end_line), ]
       }
       else {
-        data <- data_set()
+        data_set()
       }
     }
   )
@@ -253,6 +271,7 @@ server <- function(input, output, session) {
     data_set <- cbind(new_data(), token) %>%
       mutate(text = as.character(token), linenumber=row_number()) %>%
       unnest_tokens(word, text) %>%
+      filter(word != input$stopwords) %>%
       anti_join(stop_words)
   })
   
@@ -277,11 +296,12 @@ server <- function(input, output, session) {
   output$afinn_sentiment <- renderPlot({
     plotdata() %>%
       inner_join(get_sentiments("afinn")) %>%
+      filter(word != input$sentimentwords) %>%
       group_by(score) %>%
       count(word, sort=TRUE) %>%
       ungroup() %>%
       mutate(word_score = score*n) %>%
-      filter(abs(word_score) > 25) %>% # will eventually want to make this a user input
+      filter(abs(word_score) > input$word_score) %>% # will eventually want to make this a user input
       mutate(word = reorder(word, word_score)) %>%
       ggplot(aes(word, n*score, fill=n*score>0)) + geom_col(show.legend = FALSE) + 
       coord_flip() + ggtitle("Words with largest Sentiment Contribution from AFINN Lexicon") +
@@ -295,6 +315,7 @@ server <- function(input, output, session) {
     
     plotdata() %>%
       inner_join(get_sentiments("bing")) %>%
+      filter(word != input$sentimentwords) %>%
       group_by(sentiment) %>%
       count(word, sort=TRUE) %>%
       top_n(10) %>%
@@ -311,6 +332,7 @@ server <- function(input, output, session) {
   output$bylinenumber <- renderPlot ({
     plotdata() %>%
       inner_join(get_sentiments("afinn")) %>%
+      filter(word != input$sentimentwords) %>%
       group_by(index = linenumber %/% input$chunk_size) %>%
       summarise(sentiment = sum(score)) %>%
       ggplot(aes(index, sentiment, fill=sentiment > 0)) + 
@@ -325,6 +347,7 @@ server <- function(input, output, session) {
     
     plotdata() %>%
       inner_join(get_sentiments("bing")) %>%
+      filter(word != input$sentimentwords) %>%
       count(word, sentiment, sort = TRUE) %>%
       reshape2::acast(word ~ sentiment, value.var = "n", fill=1) %>%
       wordcloud::comparison.cloud(colors = c("orchid", "seagreen2"), max.words = input$num_words2, 
@@ -381,7 +404,7 @@ server <- function(input, output, session) {
   
   output$network <- renderPlot ({
     bigram_graph <- clean_bigrams() %>%
-      filter(n>3) %>% # maybe want to make this a user input?
+      filter(n > input$cooccur) %>% # maybe want to make this a user input?
       igraph::graph_from_data_frame()
     
     # Create arrow
@@ -418,15 +441,17 @@ server <- function(input, output, session) {
   })
   
   word_cors <- reactive ({
-    word_cors <- data_sections() %>%
+    data_sections() %>%
       group_by(word) %>%
       filter(n() >= 20) %>% # will eventually want to make this value a user input
       pairwise_cor(word, section, sort = TRUE)
   })
   
   output$corr_comparison <- renderPlot ({ # this will just be a placeholder for now until I get words inputs going
+    req(input$corr_words)
+    
     word_cors() %>%
-      filter(item1 %in% c("wendy", "peter", "tink", "hook")) %>% # this is where input will go
+      filter(item1 == input$corr_words) %>% # this is where input will go
       group_by(item1) %>%
       top_n(6) %>%
       ungroup() %>%
@@ -434,13 +459,13 @@ server <- function(input, output, session) {
       ggplot(aes(item2, correlation, fill=item1)) + 
       geom_bar(stat = "identity", show.legend=FALSE) + 
       facet_wrap(~item1, scales = "free_y") + coord_flip() + 
-      ggtitle("Words Most Strongly Correlated with Four Main Characters")
+      ggtitle("Most Strongly Correlated Words")
   })
   
   
   output$corr_network <- renderPlot ({ # spatially doesn't look great right now
     word_cors() %>%
-      filter(correlation > 0.15) %>% # make this changeable by user input
+      filter(correlation > input$corr) %>% # make this changeable by user input
       graph_from_data_frame() %>%
       ggraph(layout = "fr") + geom_edge_link(aes(edge_alpha = correlation, label = round(correlation, 2)), show.legend = FALSE) + 
       geom_node_point(color = "plum", size = 3) + geom_node_text(aes(label = name), repel = TRUE) + 
