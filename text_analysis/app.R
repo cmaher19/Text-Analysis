@@ -15,6 +15,7 @@ library(tidyverse)
 library(widyr)
 library(igraph)
 library(ggraph)
+library(visNetwork)
 
 
 ui <- dashboardPage(
@@ -89,7 +90,8 @@ ui <- dashboardPage(
                            # ADD OPTION TO TAKE IN MULTIPLE FILES
                            fileInput("file1", label = NULL, multiple = TRUE,
                                      accept = c("text/csv", "text/comma-separated-values,text/plain", ".csv")),
-                           checkboxInput('header', 'Check box if there are variable names in the first line.', TRUE),
+                           checkboxInput("header", "Are there variable names in the first line?", TRUE),
+                           checkboxInput("remove_stopwords", "Remove stop words", TRUE),
                            radioButtons("disp", "How much raw data would you like to see?",
                                         choices = c('First few lines' = "head",
                                                     'Every line' = "all"),
@@ -117,19 +119,20 @@ ui <- dashboardPage(
               fluidRow(box(title = "Stop Words", status = "primary", solidHeader = TRUE,
                            collapsible = TRUE,
                            textInput("stopwords", "Are there any words you'd like to manually remove from the text?
-                                     Please enter them here.")))
+                                     Please enter them here and separate each word by a single space."),
+                           textOutput("removal")))
       ),
       
       # Frequency plots content
       tabItem(tabName = "freq_plots", 
               fluidRow(box(title = "Frequency Plot", status = "primary", solidHeader = TRUE,
                            collapsible = TRUE,
-                           plotOutput("freqPlot"),
+                           plotOutput("freqPlot") %>% shinycssloaders::withSpinner(),
                            sliderInput("freq_count", "Change the minimum frequency count:", 
                                        min = 0, max = 500, value = 50)),
                        box(title = "Wordcloud", status = "primary", solidHeader = TRUE,
                            collapsible = TRUE, 
-                           plotOutput("simple_wordcloud"),
+                           plotOutput("simple_wordcloud") %>% shinycssloaders::withSpinner(),
                            sliderInput("num_words", "Number of words in the cloud:", 
                                        min = 0, max = 200, value = 100)))
       ),
@@ -141,47 +144,51 @@ ui <- dashboardPage(
                            textInput("sentimentwords", "Are there any words you'd like to manually remove from the text
                                       for sentiment analysis? For instance, 'darling' has a positive sentiment but is also
                                       the family name in Peter Pan, so we would want to remove it. Please enter your words
-                                      here."))),
+                                      here and separate them by a single space."))),
               fluidRow(box(title = "AFINN Sentiments", status = "primary", solidHeader = TRUE,
                            collapsible = TRUE,
-                           plotOutput("afinn_sentiment"),
+                           plotOutput("afinn_sentiment") %>% shinycssloaders::withSpinner(),
                            sliderInput("word_score", "Keep word scores with absolute value greater than:", 
                                        min = 0, max = 100, value = 25)),
                        box(title = "Bing Sentiments", status = "primary", solidHeader = TRUE,
                            collapsible = TRUE,
-                           plotOutput("bing_sentiment"))),
+                           plotOutput("bing_sentiment") %>% shinycssloaders::withSpinner())),
               fluidRow(box(title = "Sentiment Analysis Broken Down", status = "primary", solidHeader = TRUE,
                            collapsible = TRUE,
-                           plotOutput("bylinenumber"),
+                           plotOutput("bylinenumber") %>% shinycssloaders::withSpinner(),
                            sliderInput("chunk_size", "How many lines would you like in each group?", 
                                        min = 0, max = 200, value = 100)),
                        box(title = "Wordcloud Colored by Sentiment", status = "primary", solidHeader = TRUE,
                            collapsible = TRUE,
-                           plotOutput("sentiment_wordcloud"),
+                           plotOutput("sentiment_wordcloud") %>% shinycssloaders::withSpinner(),
                            sliderInput("num_words2", "Number of words in the cloud:", 
                                        min = 0, max = 200, value = 100))),
               fluidRow(box(title = "Negated Sentiments", status = "primary", solidHeader = TRUE,
                            collapsible = TRUE,
-                           plotOutput("sentiment_negation")))
+                           plotOutput("sentiment_negation") %>% shinycssloaders::withSpinner()))
       ),
       
       # Advanced plots content
       tabItem(tabName = "advanced_plots",
               fluidRow(box(title = "Network Graph", status = "primary", solidHeader = TRUE,
                            collapsible = TRUE,
-                           plotOutput("network"),
+                           plotOutput("network", dblclick = "plot1_dblclick",
+                                      brush = brushOpts(id = "plot1_brush", resetOnNew = TRUE)) %>% 
+                             shinycssloaders::withSpinner(),
                            sliderInput("cooccur", "Change the minimum number of cooccurrences:", 
                                        min = 0, max = 200, value = 10)),
+                       box(title = "Network 2", status = "primary", solidHeader = TRUE,
+                           collapsible = TRUE, plotOutput("network2") %>% shinycssloaders::withSpinner()),
                        box(title = "Co-occurrence Count", status = "primary", solidHeader = TRUE,
                            collapsible = TRUE,
-                           tableOutput("count_table"))),
+                           tableOutput("count_table") %>% shinycssloaders::withSpinner())),
               fluidRow(box(title = "Correlation Tables", status = "primary", solidHeader = TRUE,
                            collapsible = TRUE,
                            textInput("corr_words", "I want to see correlations with the word..."),
-                           plotOutput("corr_comparison")),
+                           plotOutput("corr_comparison") %>% shinycssloaders::withSpinner()),
                        box(title = "Correlation Network Graph", status = "primary", solidHeader = TRUE,
                            collapsible = TRUE,
-                           plotOutput("corr_network"),
+                           plotOutput("corr_network") %>% shinycssloaders::withSpinner(),
                            sliderInput("corr", "Change the minimum correlation:", 
                                        min = 0, max = 1, value = 0.2)))
       )
@@ -226,7 +233,7 @@ server <- function(input, output, session) {
     # got this code from this website:
     # https://itsalocke.com/blog/r-quick-tip-upload-multiple-files-in-shiny-and-consolidate-into-a-dataset/
     req(input$file1)
-    data_set <- as.data.frame(rbindlist(lapply(input$file1$datapath, fread),
+    data_set <- as.data.frame(data.table::rbindlist(lapply(input$file1$datapath, data.table::fread),
               use.names = TRUE, fill = TRUE))
     
     #data_set<-read.csv(input$file1$datapath, header=input$header)
@@ -265,14 +272,25 @@ server <- function(input, output, session) {
                       choices = names(data_set()))
   })
   
-  
   plotdata <- reactive ({
     token <- new_data()[,input$inSelect]
-    data_set <- cbind(new_data(), token) %>%
-      mutate(text = as.character(token), linenumber=row_number()) %>%
-      unnest_tokens(word, text) %>%
-      filter(word != input$stopwords) %>%
-      anti_join(stop_words)
+    
+    word_removal <- unlist(strsplit(input$stopwords, split = " "))
+    `%nin%` = Negate(`%in%`)
+    
+    if(input$remove_stopwords == TRUE) {
+      data_set <- cbind(new_data(), token) %>%
+        mutate(text = as.character(token), linenumber=row_number()) %>%
+        unnest_tokens(word, text) %>%
+        filter(word %nin% word_removal) %>%
+        anti_join(stop_words)
+    } else {
+      data_set <- cbind(new_data(), token) %>%
+        mutate(text = as.character(token), linenumber=row_number()) %>%
+        unnest_tokens(word, text) %>%
+        filter(word %nin% word_removal)
+    }
+    
   })
   
   output$freqPlot <- renderPlot ({
@@ -289,14 +307,18 @@ server <- function(input, output, session) {
   output$simple_wordcloud <- renderPlot ({
     plotdata() %>%
       count(word) %>%
-      with(wordcloud::wordcloud(word, n, max.words = input$num_words, scale=c(4, 0.5), 
+      with(wordcloud::wordcloud(word, n, max.words = input$num_words, scale=c(2, 0.5), 
                                 colors = RColorBrewer::brewer.pal(4, "Accent")))
   })
   
   output$afinn_sentiment <- renderPlot({
+    
+    s_word_removal <- unlist(strsplit(input$sentimentwords, split = " "))
+    `%nin%` = Negate(`%in%`)
+    
     plotdata() %>%
       inner_join(get_sentiments("afinn")) %>%
-      filter(word != input$sentimentwords) %>%
+      filter(word %nin% s_word_removal) %>%
       group_by(score) %>%
       count(word, sort=TRUE) %>%
       ungroup() %>%
@@ -313,9 +335,12 @@ server <- function(input, output, session) {
   output$bing_sentiment <- renderPlot ({
     req(input$inSelect)
     
+    s_word_removal <- unlist(strsplit(input$sentimentwords, split = " "))
+    `%nin%` = Negate(`%in%`)
+    
     plotdata() %>%
       inner_join(get_sentiments("bing")) %>%
-      filter(word != input$sentimentwords) %>%
+      filter(word %nin% s_word_removal) %>%
       group_by(sentiment) %>%
       count(word, sort=TRUE) %>%
       top_n(10) %>%
@@ -351,7 +376,7 @@ server <- function(input, output, session) {
       count(word, sentiment, sort = TRUE) %>%
       reshape2::acast(word ~ sentiment, value.var = "n", fill=1) %>%
       wordcloud::comparison.cloud(colors = c("orchid", "seagreen2"), max.words = input$num_words2, 
-                                  scale = c(4,0.5), title.size = 1)
+                                  scale = c(2,0.5), title.size = 1)
   })
   
   
@@ -402,9 +427,11 @@ server <- function(input, output, session) {
             plot.title = element_text(size = 16, face = "bold"))
   })
   
+  ranges <- reactiveValues(x = NULL, y = NULL)
+  
   output$network <- renderPlot ({
     bigram_graph <- clean_bigrams() %>%
-      filter(n > input$cooccur) %>% # maybe want to make this a user input?
+      filter(n > input$cooccur, !is.na(word1), !is.na(word2)) %>% # maybe want to make this a user input?
       igraph::graph_from_data_frame()
     
     # Create arrow
@@ -415,8 +442,32 @@ server <- function(input, output, session) {
                              end_cap = ggraph::circle(.07, "inches")) + 
       ggraph::geom_node_point(color = "plum", size = 3) + 
       ggraph::geom_node_text(aes(label = name), vjust = 1, hjust = 1) + 
-      theme_void()
-  }) 
+      theme_void() + coord_cartesian(xlim = ranges$x, ylim = ranges$y,
+                                     expand = FALSE)
+  })
+  
+  observeEvent(input$plot1_dblclick, {
+    brush <- input$plot1_brush
+    if(!is.null(brush)) {
+      ranges$x <- c(brush$xmin, brush$mxmax)
+      ranges$y <- c(brush$ymin, brush$yax)
+    } else {
+      ranges$x <- NULL
+      ranges$y <- NULL
+    }
+  })
+  
+  output$network2 <- renderPlot ({
+    g1 <- clean_bigrams() %>% 
+      filter(!is.na(word1)) %>% filter(!is.na(word2)) %>% filter(n > 3) %>% 
+      graph_from_data_frame(directed = T)
+    
+    visIgraph(g1) %>%
+      visNodes(size = 25, shape = "circle") %>%
+      visOptions(highlightNearest = TRUE, 
+                 nodesIdSelection = TRUE) %>%
+      visInteraction(keyboard = TRUE)
+  })
   
   
   data_sections <- reactive ({
