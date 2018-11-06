@@ -501,8 +501,10 @@ server <- function(input, output, session) {
   output$corr_comparison <- renderPlot ({ # this will just be a placeholder for now until I get words inputs going
     req(input$corr_words)
     
+    correlation_words <- unlist(strsplit(input$corr_words, split = " "))
+    
     word_cors() %>%
-      filter(item1 == input$corr_words) %>% # this is where input will go
+      filter(item1 %in% correlation_words) %>% # this is where input will go
       group_by(item1) %>%
       top_n(6) %>%
       ungroup() %>%
