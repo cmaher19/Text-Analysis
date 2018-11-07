@@ -134,7 +134,7 @@ ui <- dashboardPage(
                            collapsible = TRUE, 
                            plotOutput("simple_wordcloud") %>% shinycssloaders::withSpinner(),
                            sliderInput("num_words", "Number of words in the cloud:", 
-                                       min = 0, max = 200, value = 100)))
+                                       min = 0, max = 100, value = 50)))
       ),
       
       # Sentiment analysis plots content
@@ -155,14 +155,17 @@ ui <- dashboardPage(
                            plotOutput("bing_sentiment") %>% shinycssloaders::withSpinner())),
               fluidRow(box(title = "Sentiment Analysis Broken Down", status = "primary", solidHeader = TRUE,
                            collapsible = TRUE,
-                           plotOutput("bylinenumber") %>% shinycssloaders::withSpinner(),
+                           radioButtons("plottype", "How would you like to break your plot down?:",
+                                        c("By chapter" = "bychapter",
+                                          "By groups of lines" = "bylines")),
+                           plotOutput("byindex") %>% shinycssloaders::withSpinner(),
                            sliderInput("chunk_size", "How many lines would you like in each group?", 
                                        min = 0, max = 200, value = 100)),
                        box(title = "Wordcloud Colored by Sentiment", status = "primary", solidHeader = TRUE,
                            collapsible = TRUE,
                            plotOutput("sentiment_wordcloud") %>% shinycssloaders::withSpinner(),
                            sliderInput("num_words2", "Number of words in the cloud:", 
-                                       min = 0, max = 200, value = 100))),
+                                       min = 0, max = 100, value = 50))),
               fluidRow(box(title = "Negated Sentiments", status = "primary", solidHeader = TRUE,
                            collapsible = TRUE,
                            plotOutput("sentiment_negation") %>% shinycssloaders::withSpinner()))
@@ -280,13 +283,17 @@ server <- function(input, output, session) {
     
     if(input$remove_stopwords == TRUE) {
       data_set <- cbind(new_data(), token) %>%
-        mutate(text = as.character(token), linenumber=row_number()) %>%
+        mutate(text = as.character(token), linenumber=row_number(),
+               chapter = cumsum(str_detect(text, regex("^chapter ", 
+                                                       ignore_case = TRUE)))) %>%
         unnest_tokens(word, text) %>%
         filter(word %nin% word_removal) %>%
         anti_join(stop_words)
     } else {
       data_set <- cbind(new_data(), token) %>%
-        mutate(text = as.character(token), linenumber=row_number()) %>%
+        mutate(text = as.character(token), linenumber=row_number(),
+               chapter = cumsum(str_detect(text, regex("^chapter ", 
+                                                       ignore_case = TRUE)))) %>%
         unnest_tokens(word, text) %>%
         filter(word %nin% word_removal)
     }
@@ -354,25 +361,44 @@ server <- function(input, output, session) {
             strip.text.x = element_text(size = 12, face = "bold")) 
   })
   
-  output$bylinenumber <- renderPlot ({
-    plotdata() %>%
-      inner_join(get_sentiments("afinn")) %>%
-      filter(word != input$sentimentwords) %>%
-      group_by(index = linenumber %/% input$chunk_size) %>%
-      summarise(sentiment = sum(score)) %>%
-      ggplot(aes(index, sentiment, fill=sentiment > 0)) + 
-      geom_col(show.legend = FALSE) + ggtitle("Sentiment Scores by Chunks of Text") +
-      xlab("Index") + ylab("Sentiment Score") + theme(axis.text = element_text(size = 12), 
-                                                      axis.title = element_text(size = 14,face = "bold"),
-                                                      plot.title = element_text(size = 16, face = "bold")) 
+  output$byindex <- renderPlot ({
+    s_word_removal <- unlist(strsplit(input$sentimentwords, split = " "))
+    `%nin%` = Negate(`%in%`)
+    
+    if(input$plottype == "bylines") {
+      plotdata() %>%
+        inner_join(get_sentiments("afinn")) %>%
+        filter(word %nin% s_word_removal) %>%
+        group_by(index = linenumber %/% input$chunk_size) %>%
+        summarise(sentiment = sum(score)) %>%
+        ggplot(aes(index, sentiment, fill=sentiment > 0)) + 
+        geom_col(show.legend = FALSE) + ggtitle("Sentiment Scores by Chunks of Text") +
+        xlab("Index") + ylab("Sentiment Score") + theme(axis.text = element_text(size = 12), 
+                                                        axis.title = element_text(size = 14,face = "bold"),
+                                                        plot.title = element_text(size = 16, face = "bold")) 
+    } else {
+      plotdata() %>%
+        inner_join(get_sentiments("afinn")) %>%
+        filter(word %nin% s_word_removal) %>%
+        group_by(chapter) %>%
+        summarise(sentiment = sum(score)) %>%
+        ggplot(aes(chapter, sentiment, fill=sentiment > 0)) + 
+        geom_col(show.legend = FALSE) + ggtitle("Sentiment Scores by Chapter") +
+        xlab("Chapter") + ylab("Sentiment Score") + theme(axis.text = element_text(size = 12), 
+                                                          axis.title = element_text(size = 14,face = "bold"),
+                                                          plot.title = element_text(size = 16, face = "bold"))
+    }
   })
   
   output$sentiment_wordcloud <- renderPlot ({
     req(input$inSelect)
     
+    s_word_removal <- unlist(strsplit(input$sentimentwords, split = " "))
+    `%nin%` = Negate(`%in%`)
+    
     plotdata() %>%
       inner_join(get_sentiments("bing")) %>%
-      filter(word != input$sentimentwords) %>%
+      filter(word %nin% s_word_removal) %>%
       count(word, sentiment, sort = TRUE) %>%
       reshape2::acast(word ~ sentiment, value.var = "n", fill=1) %>%
       wordcloud::comparison.cloud(colors = c("orchid", "seagreen2"), max.words = input$num_words2, 
@@ -393,9 +419,13 @@ server <- function(input, output, session) {
   })
   
   clean_bigrams <- reactive ({
+    s_word_removal <- unlist(strsplit(input$sentimentwords, split = " "))
+    `%nin%` = Negate(`%in%`)
+    
     clean_bigrams <- separate_bigrams() %>%
       filter(!word1 %in% stop_words$word) %>%
       filter(!word2 %in% stop_words$word) %>%
+      filter(word1 %nin% s_word_removal, word2 %nin% s_word_removal) %>%
       count(word1, word2, sort=TRUE)
   })
   
@@ -409,6 +439,7 @@ server <- function(input, output, session) {
   negation <- c("not", "no", "never", "without")
   
   output$sentiment_negation <- renderPlot ({
+    
     negation_words <- separate_bigrams() %>%
       filter(word1 %in% negation) %>%
       inner_join(get_sentiments("afinn"), by = c(word2 = "word")) %>%
