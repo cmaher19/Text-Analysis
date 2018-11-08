@@ -53,10 +53,6 @@ ui <- dashboardPage(
                 textOutput("thought5"),
                 br(),
                 textOutput("thought6"),
-                br(),
-                textOutput("thought7"),
-                br(),
-                textOutput("thought8"),
                 br()
               ),
               box(title = "General Project Thoughts", status = "primary", solidHeader = TRUE,
@@ -90,8 +86,11 @@ ui <- dashboardPage(
                            # ADD OPTION TO TAKE IN MULTIPLE FILES
                            fileInput("file1", label = NULL, multiple = TRUE,
                                      accept = c("text/csv", "text/comma-separated-values,text/plain", ".csv")),
+                           radioButtons("file_type", "What type of file(s)?", 
+                                        choices = c("CSV" = "csv", "TXT" = "txt")),
                            checkboxInput("header", "Are there variable names in the first line?", TRUE),
                            checkboxInput("remove_stopwords", "Remove stop words", TRUE),
+                           checkboxInput("multiple_files", "Are there multiple files?", FALSE),
                            radioButtons("disp", "How much raw data would you like to see?",
                                         choices = c('First few lines' = "head",
                                                     'Every line' = "all"),
@@ -156,11 +155,13 @@ ui <- dashboardPage(
               fluidRow(box(title = "Sentiment Analysis Broken Down", status = "primary", solidHeader = TRUE,
                            collapsible = TRUE,
                            radioButtons("plottype", "How would you like to break your plot down?:",
-                                        c("By chapter" = "bychapter",
-                                          "By groups of lines" = "bylines")),
-                           plotOutput("byindex") %>% shinycssloaders::withSpinner(),
-                           sliderInput("chunk_size", "How many lines would you like in each group?", 
-                                       min = 0, max = 200, value = 100)),
+                                        c("By groups of lines" = "bylines",
+                                          "By chapter" = "bychapter")),
+                           conditionalPanel(
+                             condition = "input.plottype == 'bylines'",
+                             sliderInput("breaks", "By how many lines per group?",
+                               min = 0, max = 200, value = 100)),
+                           plotOutput("byindex") %>% shinycssloaders::withSpinner()),
                        box(title = "Wordcloud Colored by Sentiment", status = "primary", solidHeader = TRUE,
                            collapsible = TRUE,
                            plotOutput("sentiment_wordcloud") %>% shinycssloaders::withSpinner(),
@@ -180,8 +181,8 @@ ui <- dashboardPage(
                              shinycssloaders::withSpinner(),
                            sliderInput("cooccur", "Change the minimum number of cooccurrences:", 
                                        min = 0, max = 200, value = 10)),
-                       box(title = "Network 2", status = "primary", solidHeader = TRUE,
-                           collapsible = TRUE, plotOutput("network2") %>% shinycssloaders::withSpinner()),
+                       #box(title = "Network 2", status = "primary", solidHeader = TRUE,
+                        #   collapsible = TRUE, plotOutput("network2") %>% shinycssloaders::withSpinner()),
                        box(title = "Co-occurrence Count", status = "primary", solidHeader = TRUE,
                            collapsible = TRUE,
                            tableOutput("count_table") %>% shinycssloaders::withSpinner())),
@@ -214,12 +215,7 @@ server <- function(input, output, session) {
   output$thought5 <- renderText("5. Figure out how to allow user to upload multiple files and store them properly.
                                 This allows us to use multiple (e.g. where one files is one chapter of a book) files
                                 and make a corpus that can then be analyzed.")
-  output$thought6 <- renderText("6. Make new tabs for different topics (e.g. could have a tab for sentiment
-                                analysis).")
-  output$thought7 <- renderText("7. Allow user to remove specific words from stop word list or sentiment analysis.
-                                For example, Chris and I found that 'darling' has a positive sentiment, but
-                                is just the family name in Peter Pan.")
-  output$thought8 <- renderText("8. Should explanations automatically come up or should they be optional
+  output$thought6 <- renderText("6. Should explanations automatically come up or should they be optional
                                 via only appearing when you hover over a plot or something?")
   output$description <- renderText("This will eventually be an introductory description of the interface.")
   output$general1 <- renderText("THINGS TO THINK ABOUT:")
@@ -236,10 +232,17 @@ server <- function(input, output, session) {
     # got this code from this website:
     # https://itsalocke.com/blog/r-quick-tip-upload-multiple-files-in-shiny-and-consolidate-into-a-dataset/
     req(input$file1)
-    data_set <- as.data.frame(data.table::rbindlist(lapply(input$file1$datapath, data.table::fread),
-              use.names = TRUE, fill = TRUE))
     
-    #data_set<-read.csv(input$file1$datapath, header=input$header)
+    
+    if(input$file_type == "csv") {
+      data_set <- as.data.frame(data.table::rbindlist(lapply(input$file1$datapath, data.table::fread),
+                                                      use.names = TRUE, fill = TRUE))
+    } else {
+      path_list <- as.list(input$files$datapath)
+      tbl_list <- lapply(input$files$datapath, read.table, header=TRUE, sep= " ")
+      
+      data_set <- do.call(rbind, tbl_list)
+    }
   })
   
   observeEvent(
@@ -281,6 +284,7 @@ server <- function(input, output, session) {
     word_removal <- unlist(strsplit(input$stopwords, split = " "))
     `%nin%` = Negate(`%in%`)
     
+    # Filter data based on whether or not there are stop words
     if(input$remove_stopwords == TRUE) {
       data_set <- cbind(new_data(), token) %>%
         mutate(text = as.character(token), linenumber=row_number(),
@@ -300,6 +304,7 @@ server <- function(input, output, session) {
     
   })
   
+  # Frequency plot
   output$freqPlot <- renderPlot ({
     plotdata() %>%
       count(word) %>%
@@ -311,10 +316,11 @@ server <- function(input, output, session) {
                                            plot.title=element_text(size=16, face="bold"))
   })
   
+  # Wordcloud for frequency of words (basically also just a frequency plot)
   output$simple_wordcloud <- renderPlot ({
     plotdata() %>%
       count(word) %>%
-      with(wordcloud::wordcloud(word, n, max.words = input$num_words, scale=c(2, 0.5), 
+      with(wordcloud::wordcloud(word, n, max.words = input$num_words, scale=c(4, 0.5), 
                                 colors = RColorBrewer::brewer.pal(4, "Accent")))
   })
   
@@ -369,10 +375,10 @@ server <- function(input, output, session) {
       plotdata() %>%
         inner_join(get_sentiments("afinn")) %>%
         filter(word %nin% s_word_removal) %>%
-        group_by(index = linenumber %/% input$chunk_size) %>%
+        group_by(index = linenumber %/% input$breaks) %>%
         summarise(sentiment = sum(score)) %>%
         ggplot(aes(index, sentiment, fill=sentiment > 0)) + 
-        geom_col(show.legend = FALSE) + ggtitle("Sentiment Scores by Chunks of Text") +
+        geom_col(show.legend = FALSE) + ggtitle("Sentiment Scores by Groups of Lines") +
         xlab("Index") + ylab("Sentiment Score") + theme(axis.text = element_text(size = 12), 
                                                         axis.title = element_text(size = 14,face = "bold"),
                                                         plot.title = element_text(size = 16, face = "bold")) 
@@ -402,7 +408,7 @@ server <- function(input, output, session) {
       count(word, sentiment, sort = TRUE) %>%
       reshape2::acast(word ~ sentiment, value.var = "n", fill=1) %>%
       wordcloud::comparison.cloud(colors = c("orchid", "seagreen2"), max.words = input$num_words2, 
-                                  scale = c(2,0.5), title.size = 1)
+                                  scale = c(4,0.5), title.size = 1)
   })
   
   
@@ -488,17 +494,17 @@ server <- function(input, output, session) {
     }
   })
   
-  output$network2 <- renderPlot ({
-    g1 <- clean_bigrams() %>% 
-      filter(!is.na(word1)) %>% filter(!is.na(word2)) %>% filter(n > 3) %>% 
-      graph_from_data_frame(directed = T)
+  #output$network2 <- renderPlot ({
+   # g1 <- clean_bigrams() %>% 
+    #  filter(!is.na(word1)) %>% filter(!is.na(word2)) %>% filter(n > 3) %>% 
+     # graph_from_data_frame(directed = T)
     
-    visIgraph(g1) %>%
-      visNodes(size = 25, shape = "circle") %>%
-      visOptions(highlightNearest = TRUE, 
-                 nodesIdSelection = TRUE) %>%
-      visInteraction(keyboard = TRUE)
-  })
+    #visIgraph(g1) %>%
+     # visNodes(size = 25, shape = "circle") %>%
+      #visOptions(highlightNearest = TRUE, 
+       #          nodesIdSelection = TRUE) %>%
+      #visInteraction(keyboard = TRUE)
+  #})
   
   
   data_sections <- reactive ({
@@ -543,7 +549,10 @@ server <- function(input, output, session) {
       ggplot(aes(item2, correlation, fill=item1)) + 
       geom_bar(stat = "identity", show.legend=FALSE) + 
       facet_wrap(~item1, scales = "free_y") + coord_flip() + 
-      ggtitle("Most Strongly Correlated Words")
+      ggtitle("Most Strongly Correlated Words") + 
+      xlab("Correlation") + ("Word") +
+      theme(axis.text = element_text(size = 12), axis.title = element_text(size = 14,face = "bold"), 
+            plot.title = element_text(size = 16, face = "bold")) 
   })
   
   
