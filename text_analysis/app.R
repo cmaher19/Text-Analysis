@@ -176,13 +176,14 @@ ui <- dashboardPage(
       tabItem(tabName = "advanced_plots",
               fluidRow(box(title = "Network Graph", status = "primary", solidHeader = TRUE,
                            collapsible = TRUE,
-                           plotOutput("network", dblclick = "plot1_dblclick",
+                           plotOutput("network", #dblclick = "plot1_dblclick",
                                       brush = brushOpts(id = "plot1_brush", resetOnNew = TRUE)) %>% 
                              shinycssloaders::withSpinner(),
                            sliderInput("cooccur", "Change the minimum number of cooccurrences:", 
-                                       min = 0, max = 200, value = 10)),
+                                       min = 0, max = 200, value = 5)),
                        #box(title = "Network 2", status = "primary", solidHeader = TRUE,
-                        #   collapsible = TRUE, plotOutput("network2") %>% shinycssloaders::withSpinner()),
+                        #   collapsible = TRUE, plotOutput("network2") %>% shinycssloaders::withSpinner()
+                         #  ),
                        box(title = "Co-occurrence Count", status = "primary", solidHeader = TRUE,
                            collapsible = TRUE,
                            tableOutput("count_table") %>% shinycssloaders::withSpinner())),
@@ -464,8 +465,6 @@ server <- function(input, output, session) {
             plot.title = element_text(size = 16, face = "bold"))
   })
   
-  ranges <- reactiveValues(x = NULL, y = NULL)
-  
   output$network <- renderPlot ({
     bigram_graph <- clean_bigrams() %>%
       filter(n > input$cooccur, !is.na(word1), !is.na(word2)) %>% # maybe want to make this a user input?
@@ -479,32 +478,22 @@ server <- function(input, output, session) {
                              end_cap = ggraph::circle(.07, "inches")) + 
       ggraph::geom_node_point(color = "plum", size = 3) + 
       ggraph::geom_node_text(aes(label = name), vjust = 1, hjust = 1) + 
-      theme_void() + coord_cartesian(xlim = ranges$x, ylim = ranges$y,
-                                     expand = FALSE)
+      theme_void()
   })
+
   
-  observeEvent(input$plot1_dblclick, {
-    brush <- input$plot1_brush
-    if(!is.null(brush)) {
-      ranges$x <- c(brush$xmin, brush$mxmax)
-      ranges$y <- c(brush$ymin, brush$yax)
-    } else {
-      ranges$x <- NULL
-      ranges$y <- NULL
-    }
-  })
-  
-  #output$network2 <- renderPlot ({
-   # g1 <- clean_bigrams() %>% 
-    #  filter(!is.na(word1)) %>% filter(!is.na(word2)) %>% filter(n > 3) %>% 
-     # graph_from_data_frame(directed = T)
+  output$network2 <- renderVisNetwork ({
+    g1 <- clean_bigrams() %>% 
+      filter(!is.na(word1)) %>% filter(!is.na(word2)) %>% filter(n > 3) %>% 
+      graph_from_data_frame(directed = T)
+
     
-    #visIgraph(g1) %>%
-     # visNodes(size = 25, shape = "circle") %>%
-      #visOptions(highlightNearest = TRUE, 
-       #          nodesIdSelection = TRUE) %>%
-      #visInteraction(keyboard = TRUE)
-  #})
+   visIgraph(g1) %>%
+      visNodes(size = 25, shape = "circle") %>%
+      visOptions(highlightNearest = TRUE, 
+                 nodesIdSelection = TRUE) %>%
+      visInteraction(keyboard = TRUE)
+  })
   
   
   data_sections <- reactive ({
@@ -535,13 +524,13 @@ server <- function(input, output, session) {
       pairwise_cor(word, section, sort = TRUE)
   })
   
-  output$corr_comparison <- renderPlot ({ # this will just be a placeholder for now until I get words inputs going
+  output$corr_comparison <- renderPlot ({
     req(input$corr_words)
     
     correlation_words <- unlist(strsplit(input$corr_words, split = " "))
     
     word_cors() %>%
-      filter(item1 %in% correlation_words) %>% # this is where input will go
+      filter(item1 %in% correlation_words) %>% 
       group_by(item1) %>%
       top_n(6) %>%
       ungroup() %>%
@@ -550,9 +539,9 @@ server <- function(input, output, session) {
       geom_bar(stat = "identity", show.legend=FALSE) + 
       facet_wrap(~item1, scales = "free_y") + coord_flip() + 
       ggtitle("Most Strongly Correlated Words") + 
-      xlab("Correlation") + ("Word") +
+      xlab("Correlation") + ylab("Word") +
       theme(axis.text = element_text(size = 12), axis.title = element_text(size = 14,face = "bold"), 
-            plot.title = element_text(size = 16, face = "bold")) 
+            plot.title = element_text(size = 16, face = "bold"), strip.text.x = element_text(size = 12)) 
   })
   
   
