@@ -180,13 +180,13 @@ ui <- dashboardPage(
                                       brush = brushOpts(id = "plot1_brush", resetOnNew = TRUE)) %>% 
                              shinycssloaders::withSpinner(),
                            sliderInput("cooccur", "Change the minimum number of cooccurrences:", 
-                                       min = 0, max = 200, value = 5)),
+                                       min = 0, max = 200, value = 5), width = 12)),
                        #box(title = "Network 2", status = "primary", solidHeader = TRUE,
                         #   collapsible = TRUE, plotOutput("network2") %>% shinycssloaders::withSpinner()
                          #  ),
                        box(title = "Co-occurrence Count", status = "primary", solidHeader = TRUE,
                            collapsible = TRUE,
-                           tableOutput("count_table") %>% shinycssloaders::withSpinner())),
+                           tableOutput("count_table") %>% shinycssloaders::withSpinner()),
               fluidRow(box(title = "Correlation Tables", status = "primary", solidHeader = TRUE,
                            collapsible = TRUE,
                            textInput("corr_words", "I want to see correlations with the word..."),
@@ -470,14 +470,13 @@ server <- function(input, output, session) {
       filter(n > input$cooccur, !is.na(word1), !is.na(word2)) %>% # maybe want to make this a user input?
       igraph::graph_from_data_frame()
     
-    # Create arrow
-    a <- grid::arrow(type = "closed", length = unit(.15, "inches"))
     
-    ggraph::ggraph(bigram_graph, layout = "fr") + 
-      ggraph::geom_edge_link(aes(edge_alpha = n), show.legend = FALSE, arrow = a, 
-                             end_cap = ggraph::circle(.07, "inches")) + 
+    ggraph::ggraph(bigram_graph, layout = "kk") + 
+      ggraph::geom_edge_link(aes(edge_alpha = n), show.legend = FALSE, arrow = arrow(length = unit(4, "mm")), 
+                             start_cap = ggraph::circle(3, "mm"), end_cap = ggraph::circle(3, "mm")) + 
       ggraph::geom_node_point(color = "plum", size = 3) + 
-      ggraph::geom_node_text(aes(label = name), vjust = 1, hjust = 1) + 
+      ggraph::geom_node_text(aes(label = name), hjust = 1.1, vjust = 1.1, size = 5) + 
+     scale_edge_width(range = c(2,6)) + #scale_edge_colour_manual(color = "seagreen2") +
       theme_void()
   })
 
