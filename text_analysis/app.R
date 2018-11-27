@@ -16,6 +16,7 @@ library(widyr)
 library(igraph)
 library(ggraph)
 library(visNetwork)
+library(plotly)
 
 
 ui <- dashboardPage(
@@ -24,7 +25,7 @@ ui <- dashboardPage(
     sidebarMenu(
       menuItem("Introduction", tabName = "introduction", icon = icon("dashboard")),
       menuItem("Data Upload", tabName = "data_upload", icon = icon("th")),
-      menuItem("Things to Know", tabName = "to_know", icon = icon("th")),
+      menuItem("Token Variable and Cleaning", tabName = "to_know", icon = icon("th")),
       menuItem("Frequency Plots", tabName = "freq_plots", icon = icon("dashboard")),
       menuItem("Sentiment Analysis", tabName = "sentiment_plots", icon = icon("dashboard")),
       menuItem("Advanced Plots", tabName = "advanced_plots", icon = icon("dashboard"))
@@ -38,21 +39,11 @@ ui <- dashboardPage(
               fluidRow(box(
                 title = "Introduction", status = "primary", solidHeader = TRUE,
                 collapsible = TRUE,
-                textOutput("description"),
+                textOutput("intro1"),
                 br(),
-                textOutput("intro"),
+                textOutput("intro2"),
                 br(),
-                textOutput("thought1"),
-                br(),
-                textOutput("thought2"),
-                br(),
-                textOutput("thought3"),
-                br(),
-                textOutput("thought4"),
-                br(),
-                textOutput("thought5"),
-                br(),
-                textOutput("thought6"),
+                textOutput("intro3"),
                 br()
               ),
               box(title = "General Project Thoughts", status = "primary", solidHeader = TRUE,
@@ -84,41 +75,55 @@ ui <- dashboardPage(
                            collapsible = TRUE,
                            # got this from the help menu for fileInput
                            # ADD OPTION TO TAKE IN MULTIPLE FILES
+                           textOutput("dataIntro"),
+                           br(),
                            fileInput("file1", label = NULL, multiple = TRUE,
                                      accept = c("text/csv", "text/comma-separated-values,text/plain", ".csv")),
+                           textOutput("data1"),
                            radioButtons("file_type", "What type of file(s)?", 
                                         choices = c("CSV" = "csv", "TXT" = "txt")),
-                           checkboxInput("header", "Are there variable names in the first line?", TRUE),
-                           checkboxInput("remove_stopwords", "Remove stop words", TRUE),
-                           checkboxInput("multiple_files", "Are there multiple files?", FALSE),
+                           textOutput("data2"),
+                           checkboxInput("multiple_files", tags$b("Are there multiple files?"), FALSE),
+                           textOutput("data3"),
+                           checkboxInput("header", tags$b("Are there variable names in the first line?"), TRUE),
+                           textOutput("data4"),
+                           checkboxInput("remove_stopwords", tags$b("Remove stop words"), TRUE),
                            radioButtons("disp", "How much raw data would you like to see?",
                                         choices = c('First few lines' = "head",
                                                     'Every line' = "all"),
                                         selected = "head"),
-                           actionButton("submit", "Submit")),
+                           actionButton("submit", "Click here to display data")),
                        box(title="Raw Data", status = "primary", solidHeader = TRUE,
-                           collapsible = TRUE, tableOutput("contents"))),
+                           collapsible = TRUE, 
+                           textOutput("rawData"),
+                           tableOutput("contents"))),
               fluidRow(box(title="Data Cleaning", status = "primary", solidHeader = TRUE,
-                           collapsible = TRUE, numericInput("start_line", "Line number to begin removal", 
-                                                            value = 1),
+                           collapsible = TRUE, 
+                           textOutput("dataCleaning"),
+                           numericInput("start_line", "Line number to begin removal", value = 1),
                            numericInput("end_line", "Line number to end removal",
                                         value=1),
                            checkboxInput("no_removal", "I do not want to remove any lines of data", FALSE),
                            actionButton("update", "Update Data")),
                        box(title="Modified Data", status = "primary", solidHeader=TRUE,
-                           collapsible = TRUE, tableOutput("result")))
+                           collapsible = TRUE, 
+                           textOutput("dataUpdate"),
+                           tableOutput("result")))
       ),
       
       tabItem(tabName = "to_know",
               fluidRow(box(title = "Choose a token variable", status = "primary", solidHeader = TRUE,
-                           collapsible = TRUE, 
+                           collapsible = TRUE,
+                           textOutput("tokenVar"),
+                           br(),
                            selectInput("inSelect", label=NULL,
                                        c("Variable 1" = "option1",
                                          "Variable 2" = "option2")))),
               fluidRow(box(title = "Stop Words", status = "primary", solidHeader = TRUE,
                            collapsible = TRUE,
-                           textInput("stopwords", "Are there any words you'd like to manually remove from the text?
-                                     Please enter them here and separate each word by a single space."),
+                           textOutput("stopWords"),
+                           br(),
+                           textInput("stopwords", "Enter words to remove here:"),
                            textOutput("removal")))
       ),
       
@@ -126,14 +131,19 @@ ui <- dashboardPage(
       tabItem(tabName = "freq_plots", 
               fluidRow(box(title = "Frequency Plot", status = "primary", solidHeader = TRUE,
                            collapsible = TRUE,
-                           plotOutput("freqPlot") %>% shinycssloaders::withSpinner(),
+                           textOutput("freqDescription"),
+                           plotlyOutput("freqPlot") %>% shinycssloaders::withSpinner(),
                            sliderInput("freq_count", "Change the minimum frequency count:", 
-                                       min = 0, max = 500, value = 50)),
-                       box(title = "Wordcloud", status = "primary", solidHeader = TRUE,
+                                       min = 0, max = 500, value = 50))),
+              fluidRow(box(title = "Wordcloud", status = "primary", solidHeader = TRUE,
                            collapsible = TRUE, 
+                           textOutput("wordcloudDescription"),
                            plotOutput("simple_wordcloud") %>% shinycssloaders::withSpinner(),
                            sliderInput("num_words", "Number of words in the cloud:", 
-                                       min = 0, max = 100, value = 50)))
+                                       min = 0, max = 100, value = 50))),
+              fluidRow(box(title = "What do these tell us about the text?", status = "primary",
+                           solidHeader = TRUE, collapsible = TRUE,
+                           textOutput("freqMeaning")))
       ),
       
       # Sentiment analysis plots content
@@ -203,22 +213,18 @@ ui <- dashboardPage(
 
 
 server <- function(input, output, session) {
-  output$intro <- renderText("TO DO:")
-  output$thought1 <- renderText("1. Add something where user can decide count cutoff in frequency plots, 
-                                sentiment plots, word clouds, etc. For instance, you can input that you only want to show 
-                                word with a sentiment score > 10 or that you want to break your file down by
-                                chunks of 50 lines and look at it that way.")
-  output$thought2 <- renderText("2. Only outputting head of modified data - add ability to see it all.")
-  output$thought3 <- renderText("3. Figure out how to add index to txt files - project gutenberg stuff does it 
-                                automatically and that's all I've been testing on, so it has worked")
-  output$thought4 <- renderText("4. Add descriptions/explanations for what various things are doing and why
-                                they are important for text analysis.")
-  output$thought5 <- renderText("5. Figure out how to allow user to upload multiple files and store them properly.
-                                This allows us to use multiple (e.g. where one files is one chapter of a book) files
-                                and make a corpus that can then be analyzed.")
-  output$thought6 <- renderText("6. Should explanations automatically come up or should they be optional
-                                via only appearing when you hover over a plot or something?")
-  output$description <- renderText("This will eventually be an introductory description of the interface.")
+  output$intro1 <- renderText("On a broad level, text analysis is the process of extracting information from 
+                                complex text data. Text data can be anything from a speech to your favorite 
+                                novel to a poet’s entire set of work. This module seeks to give the user (you!) 
+                                an introduction to the basics of text analytics. We will uncover the most 
+                                frequently used words, words with the strong emotional connotations, and 
+                                meaningful relationships between words in your text.")
+  output$intro2 <- renderText("This module is meant to serve as an introduction to the world of text analysis. 
+                                We want to give people exposure to something they might not otherwise see. Text 
+                                analytics can be intimidating and we want to make this introduction accessible 
+                                to anyone who is interested.")
+  output$intro3 <- renderText("We hope this module will be useful to undergraduates students enrolled in introductory 
+                                English and Linguistics as well as students interested in Statistics and Data Science.")
   output$general1 <- renderText("THINGS TO THINK ABOUT:")
   output$general2 <- renderText("a. Twitter capabilities")
   output$general3 <- renderText("b. Web scraping - paste URL and it pulls text")
@@ -228,6 +234,21 @@ server <- function(input, output, session) {
   output$general7 <- renderText("a. Peter Pan")
   output$general8 <- renderText("b. Amherst College Course Catalog")
   output$general9 <- renderText("c. Emily Dickinson Poems")
+  
+  
+  output$dataIntro <- renderText("First off, we need to choose the file that contains the text data that we want to analyze.
+                             We can use .csv and .txt files to analyze our text data in the module. Please select a file from
+                             your computer than meets these requirements and then we can get started!")
+  output$data1 <- renderText("Have a look at the extension of the file you chose - is it .csv or .txt? Knowing this will help
+                             the program process your data.")
+  output$data2 <- renderText("We can compare text across different pieces of text. If you have multiple files that 
+                             you’d like to compare, please upload them above and check this box.")
+  output$data3 <- renderText("Have a look at your file - are the names of the variables in the first line or 
+                             does the text start right away?")
+  output$data4 <- renderText("These are words we want to remove before processing the text. They aren’t integral to 
+                             interpreting the main themes of the text and tend to be filler words like “and”, “the”, 
+                             and “or”. Feel free to run the analysis with them removed (which is standard) and then 
+                             with them left in and take a look at the different results you get!")
   
   data_set <- reactive({
     # got this code from this website:
@@ -246,8 +267,10 @@ server <- function(input, output, session) {
     }
   })
   
+
   observeEvent(
     input$submit, {
+      output$rawData <- renderText("Have a look at the data. Does it look how you expected?")
       output$contents <- renderTable({
         if(input$disp == "head") {
           return(head(data_set()))
@@ -259,8 +282,15 @@ server <- function(input, output, session) {
     } 
   )
   
+  output$dataCleaning <- renderText("Sometimes there is part of the data that we don’t want to include in our analysis. F
+                                     or instance, you might want to remove the table of contents. After looking at the raw 
+                                    data, are there any lines that you would like to remove? If so, enter their line 
+                                    numbers here.")
+  
   new_data <- eventReactive(
     input$update, {
+      output$dataUpdate <- renderText("Check out the modified data. If you removed some data, does it look better now? 
+                                      If not, feel free to change which lines you removed up above.")
       if(input$no_removal == FALSE) {
         data_set()[-c(input$start_line:input$end_line), ]
       }
@@ -278,6 +308,15 @@ server <- function(input, output, session) {
                       label = "Choose a token variable:",
                       choices = names(data_set()))
   })
+  
+  output$tokenVar <- renderText(" In order to extract information from our text, we need to break it 
+                                down into “pieces” that we care about. In this case, this means we want 
+                                one word per line of data. The variable that contains this information 
+                                is called the token variable -- please find the column that holds the 
+                                text data we want to break down.")
+  output$stopWords <- renderText("We mentioned stop words earlier on -- if there are words from your text that you don’t 
+                                 want to have included in the analysis, please enter them here. If you'd like to remove
+                                 multiple words, simply separate each one by a single white space.")
   
   plotdata <- reactive ({
     token <- new_data()[,input$inSelect]
@@ -306,8 +345,10 @@ server <- function(input, output, session) {
   })
   
   # Frequency plot
-  output$freqPlot <- renderPlot ({
-    plotdata() %>%
+  output$freqDescription <- renderText("This plots displays the words that occur the most in your text. 
+                                       Feel free to adjust slider to show words that occur more/less.")
+  output$freqPlot <- renderPlotly ({
+    g <- plotdata() %>%
       count(word) %>%
       filter(n > input$freq_count) %>% # will eventually want to make this a user input
       mutate(word = reorder(word, n)) %>%
@@ -315,9 +356,16 @@ server <- function(input, output, session) {
       ylab("Count") + xlab("Word") + theme(axis.text=element_text(size=12),
                                            axis.title=element_text(size=14,face="bold"),
                                            plot.title=element_text(size=16, face="bold"))
+    
+    ggplotly(g)
   })
   
+  
   # Wordcloud for frequency of words (basically also just a frequency plot)
+  output$wordcloudDescription <- renderText("This word cloud also shows the most common words. The larger the 
+                                            word appears in the cloud, the more times it occurs in the text. 
+                                            You can adjust how many words appear in the cloud with the slider below.")
+  
   output$simple_wordcloud <- renderPlot ({
     plotdata() %>%
       count(word) %>%
@@ -325,12 +373,16 @@ server <- function(input, output, session) {
                                 colors = RColorBrewer::brewer.pal(4, "Accent")))
   })
   
+  output$freqMeaning <- renderText("Both of these plots give us a sense of the most commonly used words in the text. 
+                                   These can be helpful in determining the overall topic and what might be most important 
+                                   in the text.")
+  
   output$afinn_sentiment <- renderPlot({
     
     s_word_removal <- unlist(strsplit(input$sentimentwords, split = " "))
     `%nin%` = Negate(`%in%`)
     
-    plotdata() %>%
+   plotdata() %>%
       inner_join(get_sentiments("afinn")) %>%
       filter(word %nin% s_word_removal) %>%
       group_by(score) %>%
@@ -344,6 +396,7 @@ server <- function(input, output, session) {
       ylab("Word Score") + xlab("Word") + theme(axis.text=element_text(size=12),
                                                 axis.title=element_text(size=14,face="bold"),
                                                 plot.title=element_text(size=14, face="bold"))
+   #  ggplotly(g1)
   })
   
   output$bing_sentiment <- renderPlot ({
@@ -481,7 +534,7 @@ server <- function(input, output, session) {
   })
 
   
-  output$network2 <- renderVisNetwork ({
+  output$network2 <- visNetwork::renderVisNetwork ({
     g1 <- clean_bigrams() %>% 
       filter(!is.na(word1)) %>% filter(!is.na(word2)) %>% filter(n > 3) %>% 
       graph_from_data_frame(directed = T)
@@ -498,7 +551,7 @@ server <- function(input, output, session) {
   data_sections <- reactive ({
     token <- new_data()[,input$inSelect]
     sections <- cbind(new_data(), token) %>%
-      mutate(section = row_number() %/% 2, text = as.character(token)) %>%
+      mutate(section = row_number() %/% 2, text = as.character(token)) %>% # by two lines - add option here
       filter(section > 0) %>%
       unnest_tokens(word, text) %>%
       filter(!word %in% stop_words$word)
@@ -511,7 +564,7 @@ server <- function(input, output, session) {
     
     toDelete <- seq(1, nrow(word_pairs), 2)
     word_pairs <- word_pairs[toDelete,] %>%
-      rename("Word 1" = "item1", "Word 2" = "item2", "Count" = "n")
+      rename("First Word" = "item1", "Second Word" = "item2", "Count" = "n")
     
     head(word_pairs, 10)
   })
@@ -548,7 +601,8 @@ server <- function(input, output, session) {
     word_cors() %>%
       filter(correlation > input$corr) %>% # make this changeable by user input
       graph_from_data_frame() %>%
-      ggraph(layout = "fr") + geom_edge_link(aes(edge_alpha = correlation, label = round(correlation, 2)), show.legend = FALSE) + 
+      ggraph(layout = "fr") + geom_edge_link(aes(edge_alpha = correlation, 
+                                                 label = round(correlation, 2)), show.legend = FALSE) + 
       geom_node_point(color = "plum", size = 3) + geom_node_text(aes(label = name), repel = TRUE) + 
       theme_void()
   })
