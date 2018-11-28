@@ -148,22 +148,27 @@ ui <- dashboardPage(
       
       # Sentiment analysis plots content
       tabItem(tabName = "sentiment_plots",
+              fluidRow(box(title = "Overview", status = "primary", solidHeader = TRUE,
+                           collapsible = TRUE,
+                           textOutput("sentimentOverview"))),
               fluidRow(box(title = "Remove Sentiment Words", status = "primary", solidHeader = TRUE,
                            collapsible = TRUE,
-                           textInput("sentimentwords", "Are there any words you'd like to manually remove from the text
-                                      for sentiment analysis? For instance, 'darling' has a positive sentiment but is also
-                                      the family name in Peter Pan, so we would want to remove it. Please enter your words
-                                      here and separate them by a single space."))),
+                           textOutput("removeSentiments"),
+                           textInput("sentimentwords", "Enter words to remove
+                                      and separate each of them by a single space."))),
               fluidRow(box(title = "AFINN Sentiments", status = "primary", solidHeader = TRUE,
                            collapsible = TRUE,
+                           textOutput("afinnDescription"),
                            plotOutput("afinn_sentiment") %>% shinycssloaders::withSpinner(),
                            sliderInput("word_score", "Keep word scores with absolute value greater than:", 
                                        min = 0, max = 100, value = 25)),
                        box(title = "Bing Sentiments", status = "primary", solidHeader = TRUE,
                            collapsible = TRUE,
+                           textOutput("bingDescription"),
                            plotOutput("bing_sentiment") %>% shinycssloaders::withSpinner())),
               fluidRow(box(title = "Sentiment Analysis Broken Down", status = "primary", solidHeader = TRUE,
                            collapsible = TRUE,
+                           textOutput("chunkDescription"),
                            radioButtons("plottype", "How would you like to break your plot down?:",
                                         c("By groups of lines" = "bylines",
                                           "By chapter" = "bychapter")),
@@ -174,35 +179,46 @@ ui <- dashboardPage(
                            plotOutput("byindex") %>% shinycssloaders::withSpinner()),
                        box(title = "Wordcloud Colored by Sentiment", status = "primary", solidHeader = TRUE,
                            collapsible = TRUE,
+                           textOutput("sentwcDescription"),
                            plotOutput("sentiment_wordcloud") %>% shinycssloaders::withSpinner(),
                            sliderInput("num_words2", "Number of words in the cloud:", 
                                        min = 0, max = 100, value = 50))),
               fluidRow(box(title = "Negated Sentiments", status = "primary", solidHeader = TRUE,
                            collapsible = TRUE,
+                           textOutput("negateDescription"),
                            plotOutput("sentiment_negation") %>% shinycssloaders::withSpinner()))
       ),
       
       # Advanced plots content
       tabItem(tabName = "advanced_plots",
+              fluidRow(box(title = "Section Overview", status = "primary", solidHeader = TRUE,
+                           collapsible = TRUE,
+                           textOutput("advancedOverview"))),
               fluidRow(box(title = "Network Graph", status = "primary", solidHeader = TRUE,
                            collapsible = TRUE,
+                           textOutput("networkDescription"),
                            plotOutput("network", #dblclick = "plot1_dblclick",
                                       brush = brushOpts(id = "plot1_brush", resetOnNew = TRUE)) %>% 
                              shinycssloaders::withSpinner(),
                            sliderInput("cooccur", "Change the minimum number of cooccurrences:", 
-                                       min = 0, max = 200, value = 5), width = 12)),
+                                       min = 0, max = 200, value = 5), width = 12),
                        #box(title = "Network 2", status = "primary", solidHeader = TRUE,
                         #   collapsible = TRUE, plotOutput("network2") %>% shinycssloaders::withSpinner()
                          #  ),
                        box(title = "Co-occurrence Count", status = "primary", solidHeader = TRUE,
                            collapsible = TRUE,
-                           tableOutput("count_table") %>% shinycssloaders::withSpinner()),
+                           textOutput("countDescription"),
+                           tableOutput("count_table") %>% shinycssloaders::withSpinner(),
+                           sliderInput("byLines", "Number of lines:",
+                                       min = 0, max = 10, value = 2))),
               fluidRow(box(title = "Correlation Tables", status = "primary", solidHeader = TRUE,
                            collapsible = TRUE,
+                           textOutput("corrDescription"),
                            textInput("corr_words", "I want to see correlations with the word..."),
                            plotOutput("corr_comparison") %>% shinycssloaders::withSpinner()),
                        box(title = "Correlation Network Graph", status = "primary", solidHeader = TRUE,
                            collapsible = TRUE,
+                           textOutput("corrnetworkDescription"),
                            plotOutput("corr_network") %>% shinycssloaders::withSpinner(),
                            sliderInput("corr", "Change the minimum correlation:", 
                                        min = 0, max = 1, value = 0.2)))
@@ -376,7 +392,24 @@ server <- function(input, output, session) {
   output$freqMeaning <- renderText("Both of these plots give us a sense of the most commonly used words in the text. 
                                    These can be helpful in determining the overall topic and what might be most important 
                                    in the text.")
+  # SENTIMENT ANALYSIS SECTION
+  output$sentimentOverview <- renderText("In this section we will attempt to identify the words that contribute most to the 
+                                         sentiment of this piece of text. We do this by attaching sentiment lexicons, which 
+                                         are groups of words that have identified specific words and associated them with an 
+                                         emotion. For example, this could be used to trace the plot of a book such as Peter 
+                                         Pan or to identify the overall sentiment of a movie review.")
+  output$removeSentiments <- renderText("Are there any words you'd like to manually remove from the text for sentiment analysis? 
+                                        For instance, 'darling' has a positive sentiment but is also the family name in Peter 
+                                        Pan, so we would want to remove it. Please enter your words here and separate them by 
+                                        a single space. Note: you may want to revisit this step after having a look at the 
+                                        sentiment analysis plots.")
   
+  # AFINN Sentiment Graph
+  output$afinnDescription <- renderText("This graph uses the AFINN sentiment lexicon that scores words on a scale from -5 to 5, 
+                                        with -5 being most negative and 5 being most positive. That score is multiplied by the 
+                                        number of times the word occurred and the overall word score is plotted on this graph. 
+                                        Feel free to alter the minimum word score of words that appear on the graph by adjusting 
+                                        the slider.")
   output$afinn_sentiment <- renderPlot({
     
     s_word_removal <- unlist(strsplit(input$sentimentwords, split = " "))
@@ -399,6 +432,11 @@ server <- function(input, output, session) {
    #  ggplotly(g1)
   })
   
+  # Bing sentiment graph
+  output$bingDescription <- renderText("The Bing sentiment lexicon categorizes words as either positive or negative. 
+                                       This graph shows the “most positive” and “most negative” words according to this 
+                                       specific lexicon. This is simply another way to do a simple sentiment analysis on 
+                                       a chunk of text.")
   output$bing_sentiment <- renderPlot ({
     req(input$inSelect)
     
@@ -421,6 +459,12 @@ server <- function(input, output, session) {
             strip.text.x = element_text(size = 12, face = "bold")) 
   })
   
+  # Sentiment analysis by chunk/chapter of text
+  output$chunkDescription <- renderText("This plot uses the AFINN lexicon and counts word score over a specified number of lines 
+                                        or by chapter (it currently can only break down texts by chapter when the chapters literally
+                                        begin with “Chapter”). When it shows blue bar above the middle line, that means that chunk 
+                                        of text had more positively scored words than negatively scored words. In this sense, you can 
+                                        track how the plot of a book changes by chapter.")
   output$byindex <- renderPlot ({
     s_word_removal <- unlist(strsplit(input$sentimentwords, split = " "))
     `%nin%` = Negate(`%in%`)
@@ -450,6 +494,10 @@ server <- function(input, output, session) {
     }
   })
   
+  # Sentiment wordcloud
+  output$sentwcDescription <- renderText("This plot uses the positive and negative word categorizations from the Bing 
+                                         sentiment lexicon. It shows the most positive words appear in large green 
+                                         lettering and the most negative words appear in fuschia.")
   output$sentiment_wordcloud <- renderPlot ({
     req(input$inSelect)
     
@@ -465,7 +513,7 @@ server <- function(input, output, session) {
                                   scale = c(4,0.5), title.size = 1)
   })
   
-  
+  # Data processing to get negated sentiment words
   bigrams <- reactive ({
     token <- new_data()[,input$inSelect]
     bigram_data <- cbind(new_data(), token) %>%
@@ -495,8 +543,17 @@ server <- function(input, output, session) {
       unite(bigram, word1, word2, sep = " ")
   })
   
-  
+  # Negated sentiment words plot
   negation <- c("not", "no", "never", "without")
+  
+  output$negateDescription <- renderText("Although we are looking at the text one word at a time, we often need to consider 
+                                         multiple words at once in order to get a better sense of what is going on in the 
+                                         text. When you consider two words at a time, you can get a more nuanced sense of 
+                                         what is going, which can be important for sentiment analysis. For instance, if you 
+                                         consider the word ‘happy’ by itself, it is counted as a positive word. But if it is 
+                                         preceded by the word ‘not’, then the phrase ‘not happy’ should be categorized as 
+                                         negative. This plot displays the words that are most commonly preceded by negation 
+                                         words (“not”, “no”, “none”, etc).")
   
   output$sentiment_negation <- renderPlot ({
     
@@ -518,6 +575,17 @@ server <- function(input, output, session) {
             plot.title = element_text(size = 16, face = "bold"))
   })
   
+  # ADVANCED PLOTS
+  output$advancedOverview <- renderText("Correlation and co-occurrence show similar ideas -- they both contain information about 
+                                        how often words occur together. Correlation is slightly more nuanced than co-occurrence in 
+                                        that it also accounts for when words don’t occur together when calculating how strongly 
+                                        related they are.")
+  
+  # Cooccurrence network graph
+  output$networkDescription <- renderText("This network graph shows words that occur next to each other often. The darker the arrow 
+                                          between them, the more times they co-occur. The arrows shows which order the words usually 
+                                          go in. You can change the number of co-occurrences required for the pair to appear on the 
+                                          graph. This gives a sense of words that commonly appear together. ")
   output$network <- renderPlot ({
     bigram_graph <- clean_bigrams() %>%
       filter(n > input$cooccur, !is.na(word1), !is.na(word2)) %>% # maybe want to make this a user input?
@@ -551,13 +619,15 @@ server <- function(input, output, session) {
   data_sections <- reactive ({
     token <- new_data()[,input$inSelect]
     sections <- cbind(new_data(), token) %>%
-      mutate(section = row_number() %/% 2, text = as.character(token)) %>% # by two lines - add option here
+      mutate(section = row_number() %/% input$byLines, text = as.character(token)) %>% # by two lines - add option here
       filter(section > 0) %>%
       unnest_tokens(word, text) %>%
       filter(!word %in% stop_words$word)
   })
   
   # top 10 word co-occurrences (taken for words that appear within the same two lines)
+  output$countDescription <- renderText("This plots shows the words that occur most commonly together. By default, it counts
+                                        words that are within two lines of each other.")
   output$count_table <- renderTable ({
     word_pairs <- data_sections() %>%
       pairwise_count(word, section, sort = TRUE)
@@ -576,6 +646,13 @@ server <- function(input, output, session) {
       pairwise_cor(word, section, sort = TRUE)
   })
   
+  # Correlation tables
+  output$corrDescription <- renderText("Oftentimes, we are interested in the relationships between words. One way we can approach 
+                                       this idea is to look at correlations between words. If they have strong correlation, that 
+                                       means they appear together a lot and also don’t appear often by themselves. Type in words 
+                                       that you’re interested in seeing relationships with. Feel free to enter multiple words by 
+                                       separating them by a single space. Correlations range between 0 and 1 with zero being no 
+                                       association and 1 being fully strong.")
   output$corr_comparison <- renderPlot ({
     req(input$corr_words)
     
@@ -596,7 +673,9 @@ server <- function(input, output, session) {
             plot.title = element_text(size = 16, face = "bold"), strip.text.x = element_text(size = 12)) 
   })
   
-  
+  # Correlation Network
+  output$corrnetworkDescription <- renderText("This network graph shows words that are strongly correlated with one another. A darker line between the two words 
+                                              signifies a strong correlation. The label between the two words is their correlation (on a scale from 0 to 1).")
   output$corr_network <- renderPlot ({ # spatially doesn't look great right now
     word_cors() %>%
       filter(correlation > input$corr) %>% # make this changeable by user input
