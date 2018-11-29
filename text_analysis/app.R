@@ -155,7 +155,7 @@ ui <- dashboardPage(
                            collapsible = TRUE,
                            textOutput("removeSentiments"),
                            textInput("sentimentwords", "Enter words to remove
-                                      and separate each of them by a single space."))),
+                                     and separate each of them by a single space."))),
               fluidRow(box(title = "AFINN Sentiments", status = "primary", solidHeader = TRUE,
                            collapsible = TRUE, width = 12,
                            textOutput("afinnDescription"),
@@ -175,10 +175,17 @@ ui <- dashboardPage(
                            conditionalPanel(
                              condition = "input.plottype == 'bylines'",
                              sliderInput("breaks", "By how many lines per group?",
+<<<<<<< HEAD
                                min = 0, max = 200, value = 100)),
                            plotOutput("byindex") %>% shinycssloaders::withSpinner())),
               fluidRow(box(title = "Wordcloud Colored by Sentiment", status = "primary", solidHeader = TRUE,
                            collapsible = TRUE, width = 12,
+=======
+                                         min = 0, max = 200, value = 100)),
+                           plotOutput("byindex") %>% shinycssloaders::withSpinner()),
+                       box(title = "Wordcloud Colored by Sentiment", status = "primary", solidHeader = TRUE,
+                           collapsible = TRUE,
+>>>>>>> 0952447bd98836016ac90d1d179b0db342170227
                            textOutput("sentwcDescription"),
                            plotOutput("sentiment_wordcloud") %>% shinycssloaders::withSpinner(),
                            sliderInput("num_words2", "Number of words in the cloud:", 
@@ -187,7 +194,7 @@ ui <- dashboardPage(
                            collapsible = TRUE, width = 12,
                            textOutput("negateDescription"),
                            plotOutput("sentiment_negation") %>% shinycssloaders::withSpinner()))
-      ),
+                           ),
       
       # Advanced plots content
       tabItem(tabName = "advanced_plots",
@@ -203,10 +210,17 @@ ui <- dashboardPage(
                            sliderInput("cooccur", "Change the minimum number of cooccurrences:", 
                                        min = 0, max = 200, value = 5))),
                        #box(title = "Network 2", status = "primary", solidHeader = TRUE,
+<<<<<<< HEAD
                         #   collapsible = TRUE, plotOutput("network2") %>% shinycssloaders::withSpinner()
                          #  ),
               fluidRow(box(title = "Co-occurrence Count", status = "primary", solidHeader = TRUE,
                            collapsible = TRUE, width = 12,
+=======
+                       #   collapsible = TRUE, plotOutput("network2") %>% shinycssloaders::withSpinner()
+                       #  ),
+                       box(title = "Co-occurrence Count", status = "primary", solidHeader = TRUE,
+                           collapsible = TRUE,
+>>>>>>> 0952447bd98836016ac90d1d179b0db342170227
                            textOutput("countDescription"),
                            tableOutput("count_table") %>% shinycssloaders::withSpinner(),
                            sliderInput("byLines", "Number of lines:",
@@ -226,38 +240,38 @@ ui <- dashboardPage(
       
       tabItem(tabName = "multiple_files",
               textOutput("multipleDescription"),
-      fluidRow(box(title = "Choose a faceting variable", status = "primary", solidHeader = TRUE,
-                   collapsible = TRUE,
-                   textOutput("facetVar"),
-                   br(),
-                   selectInput("inSelectGroup", label=NULL,
-                               c("Variable 1" = "option1",
-                                 "Variable 2" = "option2")))),
-      fluidRow(box(title = "Frequency Plot", status = "primary", solidHeader = TRUE,
-                   collapsible = TRUE, width = 12,
-                   plotlyOutput("freqPlotGroup") %>% shinycssloaders::withSpinner(),
-                   sliderInput("freq_count", "Change the minimum frequency count:", 
-                               min = 0, max = 500, value = 50)))
-      
+              fluidRow(box(title = "Choose a faceting variable", status = "primary", solidHeader = TRUE,
+                           collapsible = TRUE,
+                           textOutput("facetVar"),
+                           br(),
+                           selectInput("inSelectGroup", label=NULL,
+                                       c("Variable 1" = "option1",
+                                         "Variable 2" = "option2")))),
+              fluidRow(box(title = "Frequency Plot", status = "primary", solidHeader = TRUE,
+                           collapsible = TRUE, width = 12,
+                           plotlyOutput("freqPlotGroup") %>% shinycssloaders::withSpinner(),
+                           sliderInput("freq_count", "Change the minimum frequency count:", 
+                                       min = 0, max = 500, value = 50)))
+              
       )
-    )
+)
   )
 )
 
 
 server <- function(input, output, session) {
   output$intro1 <- renderText("On a broad level, text analysis is the process of extracting information from 
-                                complex text data. Text data can be anything from a speech to your favorite 
-                                novel to a poet’s entire set of work. This module seeks to give the user (you!) 
-                                an introduction to the basics of text analytics. We will uncover the most 
-                                frequently used words, words with the strong emotional connotations, and 
-                                meaningful relationships between words in your text.")
+                              complex text data. Text data can be anything from a speech to your favorite 
+                              novel to a poet’s entire set of work. This module seeks to give the user (you!) 
+                              an introduction to the basics of text analytics. We will uncover the most 
+                              frequently used words, words with the strong emotional connotations, and 
+                              meaningful relationships between words in your text.")
   output$intro2 <- renderText("This module is meant to serve as an introduction to the world of text analysis. 
-                                We want to give people exposure to something they might not otherwise see. Text 
-                                analytics can be intimidating and we want to make this introduction accessible 
-                                to anyone who is interested.")
+                              We want to give people exposure to something they might not otherwise see. Text 
+                              analytics can be intimidating and we want to make this introduction accessible 
+                              to anyone who is interested.")
   output$intro3 <- renderText("We hope this module will be useful to undergraduates students enrolled in introductory 
-                                English and Linguistics as well as students interested in Statistics and Data Science.")
+                              English and Linguistics as well as students interested in Statistics and Data Science.")
   output$general1 <- renderText("THINGS TO THINK ABOUT:")
   output$general2 <- renderText("a. Twitter capabilities")
   output$general3 <- renderText("b. Web scraping - paste URL and it pulls text")
@@ -270,8 +284,8 @@ server <- function(input, output, session) {
   
   
   output$dataIntro <- renderText("First off, we need to choose the file that contains the text data that we want to analyze.
-                             We can use .csv and .txt files to analyze our text data in the module. Please select a file from
-                             your computer than meets these requirements and then we can get started!")
+                                 We can use .csv and .txt files to analyze our text data in the module. Please select a file from
+                                 your computer than meets these requirements and then we can get started!")
   output$data1 <- renderText("Have a look at the extension of the file you chose - is it .csv or .txt? Knowing this will help
                              the program process your data.")
   output$data2 <- renderText("We can compare text across different pieces of text. If you have multiple files that 
@@ -300,7 +314,7 @@ server <- function(input, output, session) {
     }
   })
   
-
+  
   observeEvent(
     input$submit, {
       output$rawData <- renderText("Have a look at the data. Does it look how you expected?")
@@ -316,7 +330,7 @@ server <- function(input, output, session) {
   )
   
   output$dataCleaning <- renderText("Sometimes there is part of the data that we don’t want to include in our analysis. F
-                                     or instance, you might want to remove the table of contents. After looking at the raw 
+                                    or instance, you might want to remove the table of contents. After looking at the raw 
                                     data, are there any lines that you would like to remove? If so, enter their line 
                                     numbers here.")
   
@@ -432,7 +446,7 @@ server <- function(input, output, session) {
     s_word_removal <- unlist(strsplit(input$sentimentwords, split = " "))
     `%nin%` = Negate(`%in%`)
     
-   plotdata() %>%
+    plotdata() %>%
       inner_join(get_sentiments("afinn")) %>%
       filter(word %nin% s_word_removal) %>%
       group_by(score) %>%
@@ -446,7 +460,7 @@ server <- function(input, output, session) {
       ylab("Word Score") + xlab("Word") + theme(axis.text=element_text(size=12),
                                                 axis.title=element_text(size=14,face="bold"),
                                                 plot.title=element_text(size=14, face="bold"))
-   #  ggplotly(g1)
+    #  ggplotly(g1)
   })
   
   # Bing sentiment graph
@@ -614,18 +628,18 @@ server <- function(input, output, session) {
                              start_cap = ggraph::circle(3, "mm"), end_cap = ggraph::circle(3, "mm")) + 
       ggraph::geom_node_point(color = "plum", size = 3) + 
       ggraph::geom_node_text(aes(label = name), hjust = 1.1, vjust = 1.1, size = 5) + 
-     scale_edge_width(range = c(2,6)) + #scale_edge_colour_manual(color = "seagreen2") +
+      scale_edge_width(range = c(2,6)) + #scale_edge_colour_manual(color = "seagreen2") +
       theme_void()
   })
-
+  
   
   output$network2 <- visNetwork::renderVisNetwork ({
     g1 <- clean_bigrams() %>% 
       filter(!is.na(word1)) %>% filter(!is.na(word2)) %>% filter(n > 3) %>% 
       graph_from_data_frame(directed = T)
-
     
-   visIgraph(g1) %>%
+    
+    visIgraph(g1) %>%
       visNodes(size = 25, shape = "circle") %>%
       visOptions(highlightNearest = TRUE, 
                  nodesIdSelection = TRUE) %>%
@@ -703,14 +717,14 @@ server <- function(input, output, session) {
       scale_edge_width(range = c(2,6))
   })
   
-  output$multipleDescription <- renderText("This will be the area where we process multiple files. The structure for the data would be that all of the files
+  output$multipleDescription <- renderText("This will be the area where we process multiple files. The structure for the data will be that all of the files
                                            get merged into one file and they have some file ID that distinguish which file they came from. Then you can basically 
                                            facet plots by the ID variable and get a plot for each file. For January work with Chris, I can add in tf-idf scores and
                                            other cool stuff that you can do when you have multiple data sources.")
   
   output$facetVar <- renderText("If you input multiple files, you may be wanting to look at graphs for each file, not just all of the files grouped together. In order
-                                 to create these graphs, we need to identify which variable holds the information that differentiates files from one another. This
-                                 will be some sort of ID variable.")
+                                to create these graphs, we need to identify which variable holds the information that differentiates files from one another. This
+                                will be some sort of ID variable.")
   
   observe({
     req(input$file1)
@@ -726,8 +740,8 @@ server <- function(input, output, session) {
       mutate(word = reorder(word, n)) %>%
       ggplot(aes(word, n)) + geom_col(fill="purple") + coord_flip() + ggtitle('Most Common Words in the Data') +
       facet_grid(input$inSelectGroup ~ .) + ylab("Count") + xlab("Word") + theme(axis.text=element_text(size=12),
-                                           axis.title=element_text(size=14,face="bold"),
-                                           plot.title=element_text(size=16, face="bold"))
+                                                                                 axis.title=element_text(size=14,face="bold"),
+                                                                                 plot.title=element_text(size=16, face="bold"))
   })
   
 }
