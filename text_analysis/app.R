@@ -78,7 +78,7 @@ ui <- dashboardPage(
                            textOutput("dataIntro"),
                            br(),
                            fileInput("file1", label = NULL, multiple = TRUE,
-                                     accept = c("text/csv", "text/comma-separated-values,text/plain", ".csv")),
+                                     accept = c("text/csv", "text/comma-separated-values, text/plain", ".csv")),
                            textOutput("data1"),
                            radioButtons("file_type", "What type of file(s)?", 
                                         choices = c("CSV" = "csv", "TXT" = "txt")),
@@ -129,21 +129,21 @@ ui <- dashboardPage(
       
       # Frequency plots content
       tabItem(tabName = "freq_plots", 
+              fluidRow(box(title = "What can frequency plots tell us about the text?", status = "primary",
+                           solidHeader = TRUE, collapsible = TRUE, width = 8,
+                           textOutput("freqMeaning"))),
               fluidRow(box(title = "Frequency Plot", status = "primary", solidHeader = TRUE,
-                           collapsible = TRUE,
+                           collapsible = TRUE, width = 12,
                            textOutput("freqDescription"),
                            plotlyOutput("freqPlot") %>% shinycssloaders::withSpinner(),
                            sliderInput("freq_count", "Change the minimum frequency count:", 
                                        min = 0, max = 500, value = 50))),
               fluidRow(box(title = "Wordcloud", status = "primary", solidHeader = TRUE,
-                           collapsible = TRUE, 
+                           collapsible = TRUE, width = 12,
                            textOutput("wordcloudDescription"),
-                           plotOutput("simple_wordcloud") %>% shinycssloaders::withSpinner(),
+                           plotOutput("simple_wordcloud", width = "100%") %>% shinycssloaders::withSpinner(),
                            sliderInput("num_words", "Number of words in the cloud:", 
-                                       min = 0, max = 100, value = 50))),
-              fluidRow(box(title = "What do these tell us about the text?", status = "primary",
-                           solidHeader = TRUE, collapsible = TRUE,
-                           textOutput("freqMeaning")))
+                                       min = 0, max = 100, value = 50)))
       ),
       
       # Sentiment analysis plots content
