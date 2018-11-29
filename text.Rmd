@@ -35,11 +35,14 @@ peterpan <- peterpan[-c(1:76),]
 
 Check out most common words - looks like a lot of character names as well as some common verbs and nouns (cried, bed, etc)
 ```{r}
-peterpan %>%
+g <- peterpan %>%
   count(word) %>%
   filter(n > 50) %>%
   mutate(word = reorder(word, n)) %>%
   ggplot(aes(word, n)) + geom_col() + coord_flip() + ggtitle('Most Common Words in Peter Pan')
+
+library(plotly)
+ggplotly(g)
 ```
 
 Sentiments in Peter Pan
