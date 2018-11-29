@@ -24,11 +24,12 @@ ui <- dashboardPage(
   dashboardSidebar(
     sidebarMenu(
       menuItem("Introduction", tabName = "introduction", icon = icon("dashboard")),
-      menuItem("Data Upload", tabName = "data_upload", icon = icon("th")),
-      menuItem("Token Variable and Cleaning", tabName = "to_know", icon = icon("th")),
-      menuItem("Frequency Plots", tabName = "freq_plots", icon = icon("dashboard")),
-      menuItem("Sentiment Analysis", tabName = "sentiment_plots", icon = icon("dashboard")),
-      menuItem("Advanced Plots", tabName = "advanced_plots", icon = icon("dashboard"))
+      menuItem("Data Upload", tabName = "data_upload", icon = icon("list-alt")),
+      menuItem("Token Variable and Cleaning", tabName = "to_know", icon = icon("table")),
+      menuItem("Frequency Plots", tabName = "freq_plots", icon = icon("bar-chart-o")),
+      menuItem("Sentiment Analysis", tabName = "sentiment_plots", icon = icon("bar-chart-o")),
+      menuItem("Advanced Plots", tabName = "advanced_plots", icon = icon("bar-chart-o")),
+      menuItem("Multiple Files", tabName = "multiple_files", icon = icon("list-alt"))
     )
   ),
   
@@ -72,9 +73,8 @@ ui <- dashboardPage(
       # Data upload content
       tabItem(tabName = "data_upload",
               fluidRow(box(title="Choose a CSV/Text File", status = "primary", solidHeader =TRUE,
-                           collapsible = TRUE,
+                           collapsible = TRUE, width = 12,
                            # got this from the help menu for fileInput
-                           # ADD OPTION TO TAKE IN MULTIPLE FILES
                            textOutput("dataIntro"),
                            br(),
                            fileInput("file1", label = NULL, multiple = TRUE,
@@ -92,21 +92,21 @@ ui <- dashboardPage(
                                         choices = c('First few lines' = "head",
                                                     'Every line' = "all"),
                                         selected = "head"),
-                           actionButton("submit", "Click here to display data")),
-                       box(title="Raw Data", status = "primary", solidHeader = TRUE,
-                           collapsible = TRUE, 
+                           actionButton("submit", "Click here to display data"))),
+              fluidRow(box(title="Raw Data", status = "primary", solidHeader = TRUE,
+                           collapsible = TRUE, width = 12,
                            textOutput("rawData"),
                            tableOutput("contents"))),
               fluidRow(box(title="Data Cleaning", status = "primary", solidHeader = TRUE,
-                           collapsible = TRUE, 
+                           collapsible = TRUE, width = 12,
                            textOutput("dataCleaning"),
                            numericInput("start_line", "Line number to begin removal", value = 1),
                            numericInput("end_line", "Line number to end removal",
                                         value=1),
                            checkboxInput("no_removal", "I do not want to remove any lines of data", FALSE),
-                           actionButton("update", "Update Data")),
-                       box(title="Modified Data", status = "primary", solidHeader=TRUE,
-                           collapsible = TRUE, 
+                           actionButton("update", "Update Data"))),
+              fluidRow(box(title="Modified Data", status = "primary", solidHeader=TRUE,
+                           collapsible = TRUE, width = 12,
                            textOutput("dataUpdate"),
                            tableOutput("result")))
       ),
@@ -222,6 +222,23 @@ ui <- dashboardPage(
                            plotOutput("corr_network") %>% shinycssloaders::withSpinner(),
                            sliderInput("corr", "Change the minimum correlation:", 
                                        min = 0, max = 1, value = 0.2)))
+      ),
+      
+      tabItem(tabName = "multiple_files",
+              textOutput("multipleDescription"),
+      fluidRow(box(title = "Choose a faceting variable", status = "primary", solidHeader = TRUE,
+                   collapsible = TRUE,
+                   textOutput("facetVar"),
+                   br(),
+                   selectInput("inSelectGroup", label=NULL,
+                               c("Variable 1" = "option1",
+                                 "Variable 2" = "option2")))),
+      fluidRow(box(title = "Frequency Plot", status = "primary", solidHeader = TRUE,
+                   collapsible = TRUE, width = 12,
+                   plotlyOutput("freqPlotGroup") %>% shinycssloaders::withSpinner(),
+                   sliderInput("freq_count", "Change the minimum frequency count:", 
+                               min = 0, max = 500, value = 50)))
+      
       )
     )
   )
@@ -684,6 +701,33 @@ server <- function(input, output, session) {
                                                  label = round(correlation, 2)), show.legend = FALSE) + 
       geom_node_point(color = "plum", size = 3) + geom_node_text(aes(label = name), repel = TRUE) + 
       theme_void()
+  })
+  
+  output$multipleDescription <- renderText("This will be the area where we process multiple files. The structure for the data would be that all of the files
+                                           get merged into one file and they have some file ID that distinguish which file they came from. Then you can basically 
+                                           facet plots by the ID variable and get a plot for each file. For January work with Chris, I can add in tf-idf scores and
+                                           other cool stuff that you can do when you have multiple data sources.")
+  
+  output$facetVar <- renderText("If you input multiple files, you may be wanting to look at graphs for each file, not just all of the files grouped together. In order
+                                 to create these graphs, we need to identify which variable holds the information that differentiates files from one another. This
+                                 will be some sort of ID variable.")
+  
+  observe({
+    req(input$file1)
+    updateSelectInput(session, "inSelectGroup",
+                      label = "Choose a facet variable:",
+                      choices = names(data_set()))
+  })
+  
+  output$freqPlotGroup <- renderPlot ({
+    plotdata() %>%
+      count(word) %>%
+      filter(n > input$freq_count) %>% # will eventually want to make this a user input
+      mutate(word = reorder(word, n)) %>%
+      ggplot(aes(word, n)) + geom_col(fill="purple") + coord_flip() + ggtitle('Most Common Words in the Data') +
+      facet_grid(input$inSelectGroup ~ .) + ylab("Count") + xlab("Word") + theme(axis.text=element_text(size=12),
+                                           axis.title=element_text(size=14,face="bold"),
+                                           plot.title=element_text(size=16, face="bold"))
   })
   
 }
