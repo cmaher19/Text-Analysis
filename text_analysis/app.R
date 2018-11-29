@@ -703,7 +703,7 @@ server <- function(input, output, session) {
       theme_void()
   })
   
-  output$multipleDescription <- renderText("This will be the area where we process multiple files. The structure for the data would be that all of the files
+  output$multipleDescription <- renderText("This will be the area where we process multiple files. The structure for the data will be that all of the files
                                            get merged into one file and they have some file ID that distinguish which file they came from. Then you can basically 
                                            facet plots by the ID variable and get a plot for each file. For January work with Chris, I can add in tf-idf scores and
                                            other cool stuff that you can do when you have multiple data sources.")
