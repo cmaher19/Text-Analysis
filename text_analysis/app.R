@@ -297,10 +297,11 @@ server <- function(input, output, session) {
       data_set <- as.data.frame(data.table::rbindlist(lapply(input$file1$datapath, data.table::fread),
                                                       use.names = TRUE, fill = TRUE))
     } else {
-      path_list <- as.list(input$files$datapath)
-      tbl_list <- lapply(input$files$datapath, read.table, header=TRUE, sep= " ")
+      #path_list <- as.list(input$files$datapath)
+      #tbl_list <- lapply(input$files$datapath, read.table, header=TRUE, sep= " ")
+      data_set <- read.delim(input$file1$datapath)
       
-      data_set <- do.call(rbind, tbl_list)
+      #data_set <- do.call(rbind, tbl_list)
     }
   })
   
