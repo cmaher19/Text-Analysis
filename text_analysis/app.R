@@ -29,7 +29,7 @@ ui <- dashboardPage(
       menuItem("Frequency Plots", tabName = "freq_plots", icon = icon("bar-chart-o")),
       menuItem("Sentiment Analysis", tabName = "sentiment_plots", icon = icon("bar-chart-o")),
       menuItem("Advanced Plots", tabName = "advanced_plots", icon = icon("bar-chart-o")),
-      menuItem("Multiple Files", tabName = "multiple_files", icon = icon("list-alt"))
+      menuItem("Multiple Files", tabName = "multipleFiles", icon = icon("list-alt"))
     )
   ),
   
@@ -175,87 +175,77 @@ ui <- dashboardPage(
                            conditionalPanel(
                              condition = "input.plottype == 'bylines'",
                              sliderInput("breaks", "By how many lines per group?",
-<<<<<<< HEAD
-                               min = 0, max = 200, value = 100)),
+                                         min = 0, max = 200, value = 100)),
                            plotOutput("byindex") %>% shinycssloaders::withSpinner())),
               fluidRow(box(title = "Wordcloud Colored by Sentiment", status = "primary", solidHeader = TRUE,
                            collapsible = TRUE, width = 12,
-=======
-                                         min = 0, max = 200, value = 100)),
-                           plotOutput("byindex") %>% shinycssloaders::withSpinner()),
-                       box(title = "Wordcloud Colored by Sentiment", status = "primary", solidHeader = TRUE,
-                           collapsible = TRUE,
->>>>>>> 0952447bd98836016ac90d1d179b0db342170227
                            textOutput("sentwcDescription"),
                            plotOutput("sentiment_wordcloud") %>% shinycssloaders::withSpinner(),
                            sliderInput("num_words2", "Number of words in the cloud:", 
                                        min = 0, max = 100, value = 50))),
               fluidRow(box(title = "Negated Sentiments", status = "primary", solidHeader = TRUE,
-                           collapsible = TRUE, width = 12,
+                           collapsible = TRUE, width = 12, 
                            textOutput("negateDescription"),
                            plotOutput("sentiment_negation") %>% shinycssloaders::withSpinner()))
-                           ),
-      
-      # Advanced plots content
-      tabItem(tabName = "advanced_plots",
-              fluidRow(box(title = "Section Overview", status = "primary", solidHeader = TRUE,
-                           collapsible = TRUE,
-                           textOutput("advancedOverview"))),
-              fluidRow(box(title = "Network Graph", status = "primary", solidHeader = TRUE,
-                           collapsible = TRUE, width = 12,
-                           textOutput("networkDescription"),
-                           plotOutput("network", #dblclick = "plot1_dblclick",
-                                      brush = brushOpts(id = "plot1_brush", resetOnNew = TRUE)) %>% 
-                             shinycssloaders::withSpinner(),
-                           sliderInput("cooccur", "Change the minimum number of cooccurrences:", 
-                                       min = 0, max = 200, value = 5))),
-                       #box(title = "Network 2", status = "primary", solidHeader = TRUE,
-<<<<<<< HEAD
-                        #   collapsible = TRUE, plotOutput("network2") %>% shinycssloaders::withSpinner()
+              ),
+  
+  # Advanced plots content
+  tabItem(tabName = "advanced_plots",
+          fluidRow(box(title = "Section Overview", status = "primary", solidHeader = TRUE,
+                       collapsible = TRUE,
+                       textOutput("advancedOverview"))),
+          fluidRow(box(title = "Network Graph", status = "primary", solidHeader = TRUE,
+                       collapsible = TRUE, width = 12,
+                       textOutput("networkDescription"),
+                       plotOutput("network", #dblclick = "plot1_dblclick",
+                                  brush = brushOpts(id = "plot1_brush", resetOnNew = TRUE)) %>% 
+                         shinycssloaders::withSpinner(),
+                       sliderInput("cooccur", "Change the minimum number of cooccurrences:", 
+                                   min = 0, max = 200, value = 5))),
+          #box(title = "Network 2", status = "primary", solidHeader = TRUE,
+          #   collapsible = TRUE, plotOutput("network2") %>% shinycssloaders::withSpinner()
+          #  ),
+          fluidRow(box(title = "Co-occurrence Count", status = "primary", solidHeader = TRUE,
+                       collapsible = TRUE, width = 12,
+                         #   plotOutput("network2") %>% shinycssloaders::withSpinner()
                          #  ),
-              fluidRow(box(title = "Co-occurrence Count", status = "primary", solidHeader = TRUE,
-                           collapsible = TRUE, width = 12,
-=======
-                       #   collapsible = TRUE, plotOutput("network2") %>% shinycssloaders::withSpinner()
-                       #  ),
-                       box(title = "Co-occurrence Count", status = "primary", solidHeader = TRUE,
-                           collapsible = TRUE,
->>>>>>> 0952447bd98836016ac90d1d179b0db342170227
-                           textOutput("countDescription"),
-                           tableOutput("count_table") %>% shinycssloaders::withSpinner(),
-                           sliderInput("byLines", "Number of lines:",
-                                       min = 0, max = 10, value = 2))),
-              fluidRow(box(title = "Correlation Tables", status = "primary", solidHeader = TRUE,
-                           collapsible = TRUE, width = 12,
-                           textOutput("corrDescription"),
-                           textInput("corr_words", "I want to see correlations with the word..."),
-                           plotOutput("corr_comparison") %>% shinycssloaders::withSpinner())),
-              fluidRow(box(title = "Correlation Network Graph", status = "primary", solidHeader = TRUE,
-                           collapsible = TRUE, width = 12,
-                           textOutput("corrnetworkDescription"),
-                           plotOutput("corr_network") %>% shinycssloaders::withSpinner(),
-                           sliderInput("corr", "Change the minimum correlation:", 
-                                       min = 0, max = 1, value = 0.2)))
-      ),
-      
-      tabItem(tabName = "multiple_files",
-              textOutput("multipleDescription"),
-              fluidRow(box(title = "Choose a faceting variable", status = "primary", solidHeader = TRUE,
-                           collapsible = TRUE,
-                           textOutput("facetVar"),
-                           br(),
-                           selectInput("inSelectGroup", label=NULL,
-                                       c("Variable 1" = "option1",
-                                         "Variable 2" = "option2")))),
-              fluidRow(box(title = "Frequency Plot", status = "primary", solidHeader = TRUE,
-                           collapsible = TRUE, width = 12,
-                           plotlyOutput("freqPlotGroup") %>% shinycssloaders::withSpinner(),
-                           sliderInput("freq_count", "Change the minimum frequency count:", 
-                                       min = 0, max = 500, value = 50)))
-              
-      )
-)
+                         box(title = "Co-occurrence Count", status = "primary", solidHeader = TRUE,
+                             collapsible = TRUE,
+                             textOutput("countDescription"),
+                             tableOutput("count_table") %>% shinycssloaders::withSpinner(),
+                             sliderInput("byLines", "Number of lines:",
+                                         min = 0, max = 10, value = 2)))),
+          fluidRow(box(title = "Correlation Tables", status = "primary", solidHeader = TRUE,
+                                collapsible = TRUE, width = 12,
+                                textOutput("corrDescription"),
+                                textInput("corr_words", "I want to see correlations with the word..."),
+                                plotOutput("corr_comparison") %>% shinycssloaders::withSpinner())),
+          fluidRow(box(title = "Correlation Network Graph", status = "primary", solidHeader = TRUE,
+                                collapsible = TRUE, width = 12,
+                                textOutput("corrnetworkDescription"),
+                                plotOutput("corr_network") %>% shinycssloaders::withSpinner(),
+                                sliderInput("corr", "Change the minimum correlation:", 
+                                            min = 0, max = 1, value = 0.2)))
+          ),
+          
+          tabItem(tabName = "multipleFiles",
+                  textOutput("multipleDescription"),
+                  fluidRow(box(title = "Choose a faceting variable", status = "primary", solidHeader = TRUE,
+                               collapsible = TRUE,
+                               textOutput("facetVar"),
+                               br(),
+                               selectInput("inSelectGroup", label=NULL,
+                                           c("Variable 1" = "option1",
+                                             "Variable 2" = "option2")))),
+                  fluidRow(box(title = "Frequency Plot", status = "primary", solidHeader = TRUE,
+                               collapsible = TRUE, width = 12,
+                               plotlyOutput("freqPlotGroup") %>% shinycssloaders::withSpinner(),
+                               sliderInput("freq_count", "Change the minimum frequency count:", 
+                                           min = 0, max = 500, value = 50)))
+                  
+          )
   )
+)
 )
 
 
@@ -747,4 +737,3 @@ server <- function(input, output, session) {
 }
 
 shinyApp(ui = ui, server = server)
-
