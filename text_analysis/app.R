@@ -104,6 +104,10 @@ ui <- dashboardPage(
                            numericInput("end_line", "Line number to end removal",
                                         value=1),
                            checkboxInput("no_removal", "I do not want to remove any lines of data", FALSE),
+                           radioButtons("disp1", "How much modified data would you like to see?",
+                                        choices = c('First few lines' = "head",
+                                                    'Every line' = "all"),
+                                        selected = "head"),
                            actionButton("update", "Update Data"))),
               fluidRow(box(title="Modified Data", status = "primary", solidHeader=TRUE,
                            collapsible = TRUE, width = 12,
@@ -328,6 +332,7 @@ server <- function(input, output, session) {
       output$dataUpdate <- renderText("Check out the modified data. If you removed some data, does it look better now? 
                                       If not, feel free to change which lines you removed up above.")
       if(input$no_removal == FALSE) {
+        
         data_set()[-c(input$start_line:input$end_line), ]
       }
       else {
@@ -336,7 +341,14 @@ server <- function(input, output, session) {
     }
   )
   # only shows head of modified data - may want to make you able to see all
-  output$result <- renderTable(head({new_data()}))
+  output$result <- renderTable({
+      if(input$disp1 == "head") {
+        return(head(new_data()))
+      }
+      else {
+        return(new_data())
+      }
+    })
   
   observe({
     req(input$file1)
