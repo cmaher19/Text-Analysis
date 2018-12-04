@@ -28,7 +28,7 @@ ui <- dashboardPage(
       menuItem("Token Variable and Cleaning", tabName = "to_know", icon = icon("table")),
       menuItem("Frequency Plots", tabName = "freq_plots", icon = icon("bar-chart-o")),
       menuItem("Sentiment Analysis", tabName = "sentiment_plots", icon = icon("bar-chart-o")),
-      menuItem("Advanced Plots", tabName = "advanced_plots", icon = icon("bar-chart-o")),
+      menuItem("Visualizing Relationships", tabName = "relationship_plots", icon = icon("bar-chart-o")),
       menuItem("Multiple Files", tabName = "multipleFiles", icon = icon("list-alt"))
     )
   ),
@@ -46,26 +46,6 @@ ui <- dashboardPage(
                 br(),
                 textOutput("intro3"),
                 br()
-              ),
-              box(title = "General Project Thoughts", status = "primary", solidHeader = TRUE,
-                  collapsible = TRUE,
-                  textOutput("general1"),
-                  br(),
-                  textOutput("general2"),
-                  br(),
-                  textOutput("general3"),
-                  br(),
-                  textOutput("general4"),
-                  br(), 
-                  textOutput("general5"),
-                  br(),
-                  textOutput("general6"),
-                  br(),
-                  textOutput("general7"),
-                  br(),
-                  textOutput("general8"),
-                  br(),
-                  textOutput("general9")
               ))
               
       ),
@@ -194,7 +174,7 @@ ui <- dashboardPage(
               ),
   
   # Advanced plots content
-  tabItem(tabName = "advanced_plots",
+  tabItem(tabName = "relationship_plots",
           fluidRow(box(title = "Section Overview", status = "primary", solidHeader = TRUE,
                        collapsible = TRUE,
                        textOutput("advancedOverview"))),
@@ -264,15 +244,7 @@ server <- function(input, output, session) {
                               to anyone who is interested.")
   output$intro3 <- renderText("We hope this module will be useful to undergraduates students enrolled in introductory 
                               English and Linguistics as well as students interested in Statistics and Data Science.")
-  output$general1 <- renderText("THINGS TO THINK ABOUT:")
-  output$general2 <- renderText("a. Twitter capabilities")
-  output$general3 <- renderText("b. Web scraping - paste URL and it pulls text")
-  output$general4 <- renderText("c. Additional, more specialized lexicons")
-  output$general5 <- renderText("d. Separate data into files by chapter, date, etc (what we're doing now!)")
-  output$general6 <- renderText("BUILT IN EXAMPLES:")
-  output$general7 <- renderText("a. Peter Pan")
-  output$general8 <- renderText("b. Amherst College Course Catalog")
-  output$general9 <- renderText("c. Emily Dickinson Poems")
+ 
   
   
   output$dataIntro <- renderText("First off, we need to choose the file that contains the text data that we want to analyze.
