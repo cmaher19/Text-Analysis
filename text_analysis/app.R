@@ -218,8 +218,8 @@ ui <- dashboardPage(
                  #          plotOutput("corr_network") %>% shinycssloaders::withSpinner(),
                   #         sliderInput("corr", "Change the minimum correlation:", 
                    #                    min = 0, max = 1, value = 0.2))),
-              actionButton('previous6', ' Previous Tab'),
-              actionButton('next6', ' Next Tab')
+              actionButton('previous6', ' Previous Tab')
+              #actionButton('next6', ' Next Tab')
       )
       
       #tabItem(tabName = "multipleFiles",
@@ -312,12 +312,13 @@ server <- function(input, output, session) {
     input$update, {
       output$dataUpdate <- renderText("Check out the modified data. If you removed some data, does it look better now? 
                                       If not, feel free to change which lines you removed up above.")
-      if(input$no_removal == FALSE) {
-        
+      if(input$no_removal == FALSE && input$file_type == "csv") {
+        data_set()[-c(input$start_line:input$end_line), ]
+      }
+      else if(input$no_removal == FALSE && input$file_type != "csv") {
         as.data.frame(data_set()[-c(input$start_line:input$end_line), ]) %>%
           dplyr::rename("V1" = "data_set()[-c(input$start_line:input$end_line), ]")
-      }
-      else {
+      } else {
         data_set()
       }
     }
@@ -339,10 +340,10 @@ server <- function(input, output, session) {
                       choices = names(data_set()))
   })
   
-  output$tokenVar <- renderText("In order to extract information from our text, we need to break it 
-                                down into “pieces” that we care about. In this case, this means we want 
-                                one word per line of data. The variable that contains this information 
-                                is called the token variable -- please find the column that holds the 
+  output$tokenVar <- renderText("Text analysis is run on variables called 
+token variables. These are units of one word, two words, or even whole sentences. In order to extract information from our text, we need to break it 
+                                down into “pieces” that we care about. In this interface, we want to use
+                                one word per line of data. Please find the column that holds the 
                                 text data we want to break down.")
   
   output$data4 <- renderText("There are many words in text data that occur so often that they don't have 
@@ -480,8 +481,8 @@ server <- function(input, output, session) {
   
   # Sentiment analysis by chunk/chapter of text
   output$chunkDescription <- renderText("This plot uses the AFINN lexicon and counts word score over a specified number of lines 
-                                        or by chapter (it currently can only break down texts by chapter when the chapters literally
-                                        begin with “Chapter”). When it shows blue bar above the middle line, that means that chunk 
+                                        or by chapter (it currently can only break down texts by chapter when the chapters
+                                        begin explicitly with “Chapter”). When it shows blue bar above the middle line, that means that chunk 
                                         of text had more positively scored words than negatively scored words. In this sense, you can 
                                         track how the plot of a book changes by chapter.")
   output$byindex <- renderPlot ({
