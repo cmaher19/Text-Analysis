@@ -16,29 +16,29 @@ library(widyr)
 library(igraph)
 library(ggraph)
 library(visNetwork)
-library(plotly)
+library(DT)
 
 
 ui <- dashboardPage(
   dashboardHeader(title="Text Analysis"),
   dashboardSidebar(
-    sidebarMenu(
-      menuItem("Introduction", tabName = "introduction", icon = icon("dashboard")),
-      menuItem("Data Upload", tabName = "data_upload", icon = icon("list-alt")),
-      menuItem("Token Variable and Cleaning", tabName = "to_know", icon = icon("table")),
-      menuItem("Frequency Plots", tabName = "freq_plots", icon = icon("bar-chart-o")),
-      menuItem("Sentiment Analysis", tabName = "sentiment_plots", icon = icon("bar-chart-o")),
-      menuItem("Visualizing Relationships", tabName = "relationship_plots", icon = icon("bar-chart-o")),
-      menuItem("Multiple Files", tabName = "multipleFiles", icon = icon("list-alt"))
+    sidebarMenu(id = "sidebar",
+                menuItem("1: Introduction", tabName = "introduction", icon = icon("dashboard")),
+                menuItem("2: Data Upload", tabName = "data_upload", icon = icon("list-alt")),
+                menuItem("3: Data Wrangling", tabName = "to_know", icon = icon("table")),
+                menuItem("4: Frequency Plots", tabName = "freq_plots", icon = icon("bar-chart-o")),
+                menuItem("5: Sentiment Analysis", tabName = "sentiment_plots", icon = icon("bar-chart-o")),
+                menuItem("6: Visualizing Relationships", tabName = "relationship_plots", icon = icon("bar-chart-o"))
+                #menuItem("7: Multiple Files", tabName = "multipleFiles", icon = icon("list-alt"))
     )
   ),
   
   dashboardBody(
     tabItems(
       # Introduction content
-      tabItem(tabName = "introduction",
+      tabItem(tabName = "introduction", 
               fluidRow(box(
-                title = "Introduction", status = "primary", solidHeader = TRUE,
+                title = "Introduction", status = "primary", 
                 collapsible = TRUE,
                 textOutput("intro1"),
                 br(),
@@ -46,13 +46,14 @@ ui <- dashboardPage(
                 br(),
                 textOutput("intro3"),
                 br()
-              ))
+              )),
+              actionButton('next1', ' Next Tab')
               
       ),
       
       # Data upload content
       tabItem(tabName = "data_upload",
-              fluidRow(box(title="Choose a CSV/Text File", status = "primary", solidHeader =TRUE,
+              fluidRow(box(title="Choose a CSV/Text File", status = "primary", 
                            collapsible = TRUE, width = 12,
                            # got this from the help menu for fileInput
                            textOutput("dataIntro"),
@@ -66,20 +67,19 @@ ui <- dashboardPage(
                            checkboxInput("multiple_files", strong("Are there multiple files?"), FALSE),
                            textOutput("data3"),
                            checkboxInput("header", strong("Are there variable names in the first line?"), TRUE),
-                           textOutput("data4"),
-                           checkboxInput("remove_stopwords", strong("Remove stop words"), TRUE),
                            radioButtons("disp", "How much raw data would you like to see?",
                                         choices = c('First few lines' = "head",
                                                     'Every line' = "all"),
                                         selected = "head"),
                            actionButton("submit", "Click here to display data"))),
-              fluidRow(box(title="Raw Data", status = "primary", solidHeader = TRUE,
+              fluidRow(box(title="Raw Data", status = "primary",
                            collapsible = TRUE, width = 12,
                            textOutput("rawData"),
-                           tableOutput("contents"))),
-              fluidRow(box(title="Data Cleaning", status = "primary", solidHeader = TRUE,
+                           dataTableOutput("contents"))),
+              fluidRow(box(title="Data Cleaning", status = "primary",
                            collapsible = TRUE, width = 12,
                            textOutput("dataCleaning"),
+                           br(),
                            numericInput("start_line", "Line number to begin removal", value = 1),
                            numericInput("end_line", "Line number to end removal",
                                         value=1),
@@ -89,68 +89,76 @@ ui <- dashboardPage(
                                                     'Every line' = "all"),
                                         selected = "head"),
                            actionButton("update", "Update Data"))),
-              fluidRow(box(title="Modified Data", status = "primary", solidHeader=TRUE,
+              fluidRow(box(title="Modified Data", status = "primary", 
                            collapsible = TRUE, width = 12,
                            textOutput("dataUpdate"),
-                           tableOutput("result")))
+                           dataTableOutput("result"))),
+              actionButton('previous2', ' Previous Tab'),
+              actionButton('next2', ' Next Tab')
       ),
       
       tabItem(tabName = "to_know",
-              fluidRow(box(title = "Choose a token variable", status = "primary", solidHeader = TRUE,
+              fluidRow(box(title = "Token Variable", status = "primary", 
                            collapsible = TRUE,
                            textOutput("tokenVar"),
                            br(),
                            selectInput("inSelect", label=NULL,
                                        c("Variable 1" = "option1",
                                          "Variable 2" = "option2")))),
-              fluidRow(box(title = "Stop Words", status = "primary", solidHeader = TRUE,
+              fluidRow(box(title = "Stop Words", status = "primary", 
                            collapsible = TRUE,
+                           textOutput("data4"),
+                           checkboxInput("remove_stopwords", strong("Remove stop words"), TRUE),
                            textOutput("stopWords"),
                            br(),
                            textInput("stopwords", "Enter words to remove here:"),
-                           textOutput("removal")))
+                           textOutput("removal"))),
+              actionButton('previous3', ' Previous Tab'),
+              actionButton('next3', ' Next Tab')
       ),
       
       # Frequency plots content
       tabItem(tabName = "freq_plots", 
               fluidRow(box(title = "What can frequency plots tell us about the text?", status = "primary",
-                           solidHeader = TRUE, collapsible = TRUE, width = 8,
+                           collapsible = TRUE, width = 8,
                            textOutput("freqMeaning"))),
-              fluidRow(box(title = "Frequency Plot", status = "primary", solidHeader = TRUE,
+              fluidRow(box(title = "Frequency Plot", status = "primary", 
                            collapsible = TRUE, width = 12,
                            textOutput("freqDescription"),
-                           plotlyOutput("freqPlot") %>% shinycssloaders::withSpinner(),
+                           plotOutput("freqPlot") %>% shinycssloaders::withSpinner(),
                            sliderInput("freq_count", "Change the minimum frequency count:", 
                                        min = 0, max = 500, value = 50))),
-              fluidRow(box(title = "Wordcloud", status = "primary", solidHeader = TRUE,
+              fluidRow(box(title = "Wordcloud", status = "primary",
                            collapsible = TRUE, width = 12,
                            textOutput("wordcloudDescription"),
                            plotOutput("simple_wordcloud", width = "100%") %>% shinycssloaders::withSpinner(),
                            sliderInput("num_words", "Number of words in the cloud:", 
-                                       min = 0, max = 100, value = 50)))
+                                       min = 0, max = 100, value = 50))),
+              actionButton('previous4', ' Previous Tab'),
+              actionButton('next4', ' Next Tab')
       ),
       
       # Sentiment analysis plots content
       tabItem(tabName = "sentiment_plots",
-              fluidRow(box(title = "Overview", status = "primary", solidHeader = TRUE,
+              fluidRow(box(title = "Overview", status = "primary",
                            collapsible = TRUE,
                            textOutput("sentimentOverview"))),
-              fluidRow(box(title = "Remove Sentiment Words", status = "primary", solidHeader = TRUE,
+              fluidRow(box(title = "Remove Sentiment Words", status = "primary",
                            collapsible = TRUE,
                            textOutput("removeSentiments"),
                            textInput("sentimentwords", "Enter words to remove
                                      and separate each of them by a single space."))),
-              fluidRow(box(title = "AFINN Sentiments", status = "primary", solidHeader = TRUE,
+              fluidRow(box(title = "AFINN Sentiments", status = "primary",
                            collapsible = TRUE, width = 12,
                            textOutput("afinnDescription"),
                            plotOutput("afinn_sentiment") %>% shinycssloaders::withSpinner(),
                            sliderInput("word_score", "Keep word scores with absolute value greater than:", 
                                        min = 0, max = 100, value = 25))),
-              fluidRow(box(title = "Bing Sentiments", status = "primary", solidHeader = TRUE,
+              fluidRow(box(title = "Bing Sentiments", status = "primary",
                            collapsible = TRUE, width = 12,
                            textOutput("bingDescription"),
                            plotOutput("bing_sentiment") %>% shinycssloaders::withSpinner())),
-              fluidRow(box(title = "Sentiment Analysis Broken Down", status = "primary", solidHeader = TRUE,
+              fluidRow(box(title = "Sentiment Analysis Broken Down", status = "primary",
                            collapsible = TRUE, width = 12,
                            textOutput("chunkDescription"),
                            radioButtons("plottype", "How would you like to break your plot down?:",
@@ -161,73 +169,78 @@ ui <- dashboardPage(
                              sliderInput("breaks", "By how many lines per group?",
                                          min = 0, max = 200, value = 100)),
                            plotOutput("byindex") %>% shinycssloaders::withSpinner())),
-              fluidRow(box(title = "Wordcloud Colored by Sentiment", status = "primary", solidHeader = TRUE,
+              fluidRow(box(title = "Wordcloud Colored by Sentiment", status = "primary",
                            collapsible = TRUE, width = 12,
                            textOutput("sentwcDescription"),
                            plotOutput("sentiment_wordcloud") %>% shinycssloaders::withSpinner(),
                            sliderInput("num_words2", "Number of words in the cloud:", 
                                        min = 0, max = 100, value = 50))),
-              fluidRow(box(title = "Negated Sentiments", status = "primary", solidHeader = TRUE,
+              fluidRow(box(title = "Negated Sentiments", status = "primary",
                            collapsible = TRUE, width = 12, 
                            textOutput("negateDescription"),
-                           plotOutput("sentiment_negation") %>% shinycssloaders::withSpinner()))
-              ),
-  
-  # Advanced plots content
-  tabItem(tabName = "relationship_plots",
-          fluidRow(box(title = "Section Overview", status = "primary", solidHeader = TRUE,
-                       collapsible = TRUE,
-                       textOutput("advancedOverview"))),
-          fluidRow(box(title = "Network Graph", status = "primary", solidHeader = TRUE,
-                       collapsible = TRUE, width = 12,
-                       textOutput("networkDescription"),
-                       plotOutput("network", #dblclick = "plot1_dblclick",
-                                  brush = brushOpts(id = "plot1_brush", resetOnNew = TRUE)) %>% 
-                         shinycssloaders::withSpinner(),
-                       sliderInput("cooccur", "Change the minimum number of cooccurrences:", 
-                                   min = 0, max = 200, value = 5))),
-          #box(title = "Network 2", status = "primary", solidHeader = TRUE,
-          #   collapsible = TRUE, plotOutput("network2") %>% shinycssloaders::withSpinner()
-          #  ),
-          fluidRow(box(title = "Co-occurrence Count", status = "primary", solidHeader = TRUE,
-                       collapsible = TRUE, width = 12,
-                         #   plotOutput("network2") %>% shinycssloaders::withSpinner()
-                         #  ),
-                        textOutput("countDescription"),
-                       tableOutput("count_table") %>% shinycssloaders::withSpinner(),
-                       sliderInput("byLines", "Number of lines:",
-                                   min = 0, max = 10, value = 2))),
-          fluidRow(box(title = "Correlation Tables", status = "primary", solidHeader = TRUE,
-                                collapsible = TRUE, width = 12,
-                                textOutput("corrDescription"),
-                                textInput("corr_words", "I want to see correlations with the word..."),
-                                plotOutput("corr_comparison") %>% shinycssloaders::withSpinner())),
-          fluidRow(box(title = "Correlation Network Graph", status = "primary", solidHeader = TRUE,
-                                collapsible = TRUE, width = 12,
-                                textOutput("corrnetworkDescription"),
-                                plotOutput("corr_network") %>% shinycssloaders::withSpinner(),
-                                sliderInput("corr", "Change the minimum correlation:", 
-                                            min = 0, max = 1, value = 0.2)))
-          ),
-          
-          tabItem(tabName = "multipleFiles",
-                  textOutput("multipleDescription"),
-                  fluidRow(box(title = "Choose a faceting variable", status = "primary", solidHeader = TRUE,
-                               collapsible = TRUE,
-                               textOutput("facetVar"),
-                               br(),
-                               selectInput("inSelectGroup", label=NULL,
-                                           c("Variable 1" = "option1",
-                                             "Variable 2" = "option2")))),
-                  fluidRow(box(title = "Frequency Plot", status = "primary", solidHeader = TRUE,
-                               collapsible = TRUE, width = 12,
-                               plotlyOutput("freqPlotGroup") %>% shinycssloaders::withSpinner(),
-                               sliderInput("freq_count", "Change the minimum frequency count:", 
-                                           min = 0, max = 500, value = 50)))
-                  
-          )
-  )
+                           plotOutput("sentiment_negation") %>% shinycssloaders::withSpinner())),
+              actionButton('previous5', ' Previous Tab'),
+              actionButton('next5', ' Next Tab')
+      ),
+      
+      # Advanced plots content
+      tabItem(tabName = "relationship_plots",
+              fluidRow(box(title = "Section Overview", status = "primary",
+                           collapsible = TRUE,
+                           textOutput("advancedOverview"))),
+              fluidRow(box(title = "Network Graph", status = "primary",
+                           collapsible = TRUE, width = 12,
+                           textOutput("networkDescription"),
+                           plotOutput("network", #dblclick = "plot1_dblclick",
+                                      brush = brushOpts(id = "plot1_brush", resetOnNew = TRUE)) %>% 
+                             shinycssloaders::withSpinner(),
+                           sliderInput("cooccur", "Change the minimum number of co-occurrences:", 
+                                       min = 0, max = 200, value = 5))),
+              #box(title = "Network 2", status = "primary", solidHeader = TRUE,
+              #   collapsible = TRUE, plotOutput("network2") %>% shinycssloaders::withSpinner()
+              #  ),
+              fluidRow(box(title = "Co-occurrence Count", status = "primary",
+                           collapsible = TRUE, width = 12,
+                           #   plotOutput("network2") %>% shinycssloaders::withSpinner()
+                           #  ),
+                           textOutput("countDescription"),
+                           tableOutput("count_table") %>% shinycssloaders::withSpinner(),
+                           sliderInput("byLines", "Number of lines:",
+                                       min = 0, max = 10, value = 2))),
+              fluidRow(box(title = "Correlation Tables", status = "primary",
+                           collapsible = TRUE, width = 12,
+                           textOutput("corrDescription"),
+                           textInput("corr_words", "I want to see correlations with the word..."),
+                           plotOutput("corr_comparison") %>% shinycssloaders::withSpinner())),
+              #fluidRow(box(title = "Correlation Network Graph", status = "primary", solidHeader = TRUE,
+               #            collapsible = TRUE, width = 12,
+                #           textOutput("corrnetworkDescription"),
+                 #          plotOutput("corr_network") %>% shinycssloaders::withSpinner(),
+                  #         sliderInput("corr", "Change the minimum correlation:", 
+                   #                    min = 0, max = 1, value = 0.2))),
+              actionButton('previous6', ' Previous Tab'),
+              actionButton('next6', ' Next Tab')
+      )
+      
+      #tabItem(tabName = "multipleFiles",
+              #textOutput("multipleDescription"),
+              #fluidRow(box(title = "Choose a faceting variable", status = "primary", solidHeader = TRUE,
+               #            collapsible = TRUE,
+                #           textOutput("facetVar"),
+                 #          br(),
+                  #         selectInput("inSelectGroup", label=NULL,
+                   #                    c("Variable 1" = "option1",
+                    #                     "Variable 2" = "option2")))),
+              #fluidRow(box(title = "Frequency Plot", status = "primary", solidHeader = TRUE,
+               #            collapsible = TRUE, width = 12,
+                #           plotlyOutput("freqPlotGroup") %>% shinycssloaders::withSpinner(),
+                 #          sliderInput("freq_count", "Change the minimum frequency count:", 
+                  #                     min = 0, max = 500, value = 50))),
+              #actionButton('previous7', ' Previous Tab')
+              
+     # )
 )
+  )
 )
 
 
@@ -244,7 +257,7 @@ server <- function(input, output, session) {
                               to anyone who is interested.")
   output$intro3 <- renderText("We hope this module will be useful to undergraduates students enrolled in introductory 
                               English and Linguistics as well as students interested in Statistics and Data Science.")
- 
+  
   
   
   output$dataIntro <- renderText("First off, we need to choose the file that contains the text data that we want to analyze.
@@ -256,10 +269,6 @@ server <- function(input, output, session) {
                              you’d like to compare, please upload them above and check this box.")
   output$data3 <- renderText("Have a look at your file - are the names of the variables in the first line or 
                              does the text start right away?")
-  output$data4 <- renderText("These are words we want to remove before processing the text. They aren’t integral to 
-                             interpreting the main themes of the text and tend to be filler words like “and”, “the”, 
-                             and “or”. Feel free to run the analysis with them removed (which is standard) and then 
-                             with them left in and take a look at the different results you get!")
   
   data_set <- reactive({
     # got this code from this website:
@@ -271,11 +280,11 @@ server <- function(input, output, session) {
       data_set <- as.data.frame(data.table::rbindlist(lapply(input$file1$datapath, data.table::fread),
                                                       use.names = TRUE, fill = TRUE))
     } else {
-      #path_list <- as.list(input$files$datapath)
-      #tbl_list <- lapply(input$files$datapath, read.table, header=TRUE, sep= " ")
-      data_set <- read.delim(input$file1$datapath)
-      
+      path_list <- as.list(input$files$datapath)
+      #tbl_list <- lapply(input$files$datapath, read.delim, header=FALSE, sep= " ")
       #data_set <- do.call(rbind, tbl_list)
+      
+      data_set <- read.delim(input$file1$datapath, header = F)
     }
   })
   
@@ -283,12 +292,12 @@ server <- function(input, output, session) {
   observeEvent(
     input$submit, {
       output$rawData <- renderText("Have a look at the data. Does it look how you expected?")
-      output$contents <- renderTable({
+      output$contents <- renderDataTable({
         if(input$disp == "head") {
-          return(head(data_set()))
+          datatable(head(data_set()), options = list(paging = FALSE, scrollY = "300px"))
         }
         else {
-          return(data_set())
+          datatable(data_set(), options = list(paging = FALSE, scrollY = "300px"))
         }
       })
     } 
@@ -305,7 +314,8 @@ server <- function(input, output, session) {
                                       If not, feel free to change which lines you removed up above.")
       if(input$no_removal == FALSE) {
         
-        data_set()[-c(input$start_line:input$end_line), ]
+        as.data.frame(data_set()[-c(input$start_line:input$end_line), ]) %>%
+          dplyr::rename("V1" = "data_set()[-c(input$start_line:input$end_line), ]")
       }
       else {
         data_set()
@@ -313,14 +323,14 @@ server <- function(input, output, session) {
     }
   )
   # only shows head of modified data - may want to make you able to see all
-  output$result <- renderTable({
-      if(input$disp1 == "head") {
-        return(head(new_data()))
-      }
-      else {
-        return(new_data())
-      }
-    })
+  output$result <- renderDataTable({
+    if(input$disp1 == "head") {
+      datatable(head(new_data()), options = list(paging = FALSE, scrollY = "300px"))
+    }
+    else {
+      datatable(new_data(), options = list(paging = FALSE, scrollY = "300px"))
+    }
+  })
   
   observe({
     req(input$file1)
@@ -329,12 +339,19 @@ server <- function(input, output, session) {
                       choices = names(data_set()))
   })
   
-  output$tokenVar <- renderText(" In order to extract information from our text, we need to break it 
+  output$tokenVar <- renderText("In order to extract information from our text, we need to break it 
                                 down into “pieces” that we care about. In this case, this means we want 
                                 one word per line of data. The variable that contains this information 
                                 is called the token variable -- please find the column that holds the 
                                 text data we want to break down.")
-  output$stopWords <- renderText("We mentioned stop words earlier on -- if there are words from your text that you don’t 
+  
+  output$data4 <- renderText("There are many words in text data that occur so often that they don't have 
+                             much meaning when we are trying to identify the major themes in a document. Examples of this type 
+                              of word include 'and', 'because', and 'rather'. We usually want to remove 
+                            these words before processing the text. Feel free to run the analysis with them removed (which is standard) and then 
+                             with them left in and take a look at the different results you get!")
+  
+  output$stopWords <- renderText("If there are words from your text that you don’t 
                                  want to have included in the analysis, please enter them here. If you'd like to remove
                                  multiple words, simply separate each one by a single white space.")
   
@@ -367,17 +384,15 @@ server <- function(input, output, session) {
   # Frequency plot
   output$freqDescription <- renderText("This plots displays the words that occur the most in your text. 
                                        Feel free to adjust slider to show words that occur more/less.")
-  output$freqPlot <- renderPlotly ({
-    g <- plotdata() %>%
+  output$freqPlot <- renderPlot({
+    plotdata() %>%
       count(word) %>%
-      filter(n > input$freq_count) %>% # will eventually want to make this a user input
+      filter(n > input$freq_count) %>%
       mutate(word = reorder(word, n)) %>%
-      ggplot(aes(word, n)) + geom_col(fill="purple") + coord_flip() + ggtitle('Most Common Words in the Data') +
+      ggplot(aes(word, n)) + geom_col(fill="purple") + coord_flip() + ggtitle("Most Common Words in the Data") +
       ylab("Count") + xlab("Word") + theme(axis.text=element_text(size=12),
                                            axis.title=element_text(size=14,face="bold"),
                                            plot.title=element_text(size=16, face="bold"))
-    
-    ggplotly(g)
   })
   
   
@@ -390,7 +405,7 @@ server <- function(input, output, session) {
     plotdata() %>%
       count(word) %>%
       with(wordcloud::wordcloud(word, n, max.words = input$num_words, scale=c(4, 0.5), 
-                                colors = RColorBrewer::brewer.pal(4, "Accent")))
+                                colors = RColorBrewer::brewer.pal(3, "Dark2")))
   })
   
   output$freqMeaning <- renderText("Both of these plots give us a sense of the most commonly used words in the text. 
@@ -580,15 +595,16 @@ server <- function(input, output, session) {
   })
   
   # ADVANCED PLOTS
-  output$advancedOverview <- renderText("Correlation and co-occurrence show similar ideas -- they both contain information about 
+  output$advancedOverview <- renderText("Co-occurrence and correlation are two ways that we can begin to study the relationships between words in a document.
+                                        Correlation and co-occurrence show similar ideas -- they both contain information about 
                                         how often words occur together. Correlation is slightly more nuanced than co-occurrence in 
                                         that it also accounts for when words don’t occur together when calculating how strongly 
                                         related they are.")
   
-  # Cooccurrence network graph
+  # Co-occurrence network graph
   output$networkDescription <- renderText("This network graph shows words that occur next to each other often. The darker the arrow 
-                                          between them, the more times they co-occur. The arrows shows which order the words usually 
-                                          go in. You can change the number of co-occurrences required for the pair to appear on the 
+                                          between them, the more times they co-occur. The arrows shows which order in which the words usually 
+                                          occur. You can change the number of co-occurrences required for the pair to appear on the 
                                           graph. This gives a sense of words that commonly appear together. ")
   output$network <- renderPlot ({
     bigram_graph <- clean_bigrams() %>%
@@ -717,6 +733,70 @@ server <- function(input, output, session) {
                                                                                  plot.title=element_text(size=16, face="bold"))
   })
   
+  
+  
+  observeEvent(input$next1, {
+    updateTabItems(session, "sidebar",
+                   selected = "data_upload")
+  })
+  
+  observeEvent(input$next2, {
+    updateTabItems(session, "sidebar",
+                   selected = "to_know")
+  })
+  
+  observeEvent(input$next3, {
+    updateTabItems(session, "sidebar",
+                   selected = "freq_plots")
+  })
+  
+  observeEvent(input$next4, {
+    updateTabItems(session, "sidebar",
+                   selected = "sentiment_plots")
+  })
+  
+  observeEvent(input$next5, {
+    updateTabItems(session, "sidebar",
+                   selected = "relationship_plots")
+  })
+  
+  #observeEvent(input$next6, {
+    #updateTabItems(session, "sidebar",
+     #              selected = "multipleFiles")
+  #})
+  
+  
+  observeEvent(input$previous2, {
+    updateTabsetPanel(session, "sidebar",
+                      selected = "introduction")
+  })
+  
+  observeEvent(input$previous3, {
+    updateTabsetPanel(session, "sidebar",
+                      selected = "data_upload")
+  })
+  
+  observeEvent(input$previous4, {
+    updateTabsetPanel(session, "sidebar",
+                      selected = "to_know")
+  })
+  
+  observeEvent(input$previous5, {
+    updateTabsetPanel(session, "sidebar",
+                      selected = "freq_plots")
+  })
+
+  
+  observeEvent(input$previous6, {
+    updateTabsetPanel(session, "sidebar",
+                      selected = "sentiment_plots")
+  })
+  
+  observeEvent(input$previous7, {
+    updateTabsetPanel(session, "sidebar",
+                      selected = "relationship_plots")
+  })
+
 }
 
 shinyApp(ui = ui, server = server)
