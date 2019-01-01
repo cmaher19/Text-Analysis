@@ -1,11 +1,4 @@
-#
-# This is a Shiny web application. You can run the application by clicking
-# the 'Run App' button above.
-#
-# Find out more about building applications with Shiny here:
-#
-#    http://shiny.rstudio.com/
-#
+# Text Analysis Shiny application
 
 library(shiny)
 library(shinydashboard)
@@ -37,7 +30,7 @@ ui <- dashboardPage(
     tabItems(
       # Introduction content
       tabItem(tabName = "introduction", 
-              fluidRow(box(
+              fluidRow(box(width = 12,
                 title = "Introduction", status = "primary", 
                 collapsible = TRUE,
                 textOutput("intro1"),
@@ -47,7 +40,7 @@ ui <- dashboardPage(
                 textOutput("intro3"),
                 br()
               )),
-              actionButton('next1', ' Next Tab')
+              actionButton('next1', ' Next')
               
       ),
       
@@ -57,16 +50,21 @@ ui <- dashboardPage(
                            collapsible = TRUE, width = 12,
                            # got this from the help menu for fileInput
                            textOutput("dataIntro"),
+                           radioButtons("choice", "Would you like to use your own data or 
+                                        choose the provided Peter Pan dataset?",
+                                        choices = c("Peter Pan" = "built_in", "Use my own" = "my_own"),
+                                        selected  = "built_in"),
                            br(),
                            fileInput("file1", label = NULL, multiple = TRUE,
                                      accept = c("text/csv", "text/comma-separated-values, text/plain", ".csv")),
                            textOutput("data1"),
                            radioButtons("file_type", "What type of file(s)?", 
                                         choices = c("CSV" = "csv", "TXT" = "txt")),
-                           textOutput("data2"),
-                           checkboxInput("multiple_files", strong("Are there multiple files?"), FALSE),
+                           # commenting out multiple files option for now, since it isn't developed enough yet
+                           #textOutput("data2"),
+                           #checkboxInput("multiple_files", strong("Are there multiple files?"), FALSE),
                            textOutput("data3"),
-                           checkboxInput("header", strong("Are there variable names in the first line?"), TRUE),
+                           checkboxInput("header", strong("Are there variable names in the first line?"), FALSE),
                            radioButtons("disp", "How much raw data would you like to see?",
                                         choices = c('First few lines' = "head",
                                                     'Every line' = "all"),
@@ -93,19 +91,22 @@ ui <- dashboardPage(
                            collapsible = TRUE, width = 12,
                            textOutput("dataUpdate"),
                            dataTableOutput("result"))),
-              actionButton('previous2', ' Previous Tab'),
-              actionButton('next2', ' Next Tab')
+              fluidRow(box(title="Reflection", status = "primary", 
+                           collapsible = TRUE, width = 12,
+                           textOutput("questions1"))),
+              actionButton('previous2', ' Previous'),
+              actionButton('next2', ' Next')
       ),
       
       tabItem(tabName = "to_know",
-              fluidRow(box(title = "Token Variable", status = "primary", 
+              fluidRow(box(width = 12, title = "Token Variable", status = "primary", 
                            collapsible = TRUE,
                            textOutput("tokenVar"),
                            br(),
-                           selectInput("inSelect", label=NULL,
+                           selectInput("inSelect", label = NULL,
                                        c("Variable 1" = "option1",
                                          "Variable 2" = "option2")))),
-              fluidRow(box(title = "Stop Words", status = "primary", 
+              fluidRow(box(width = 12, title = "Stop Words", status = "primary", 
                            collapsible = TRUE,
                            textOutput("data4"),
                            checkboxInput("remove_stopwords", strong("Remove stop words"), TRUE),
@@ -113,14 +114,14 @@ ui <- dashboardPage(
                            br(),
                            textInput("stopwords", "Enter words to remove here:"),
                            textOutput("removal"))),
-              actionButton('previous3', ' Previous Tab'),
-              actionButton('next3', ' Next Tab')
+              actionButton('previous3', ' Previous'),
+              actionButton('next3', ' Next')
       ),
       
       # Frequency plots content
       tabItem(tabName = "freq_plots", 
-              fluidRow(box(title = "What can frequency plots tell us about the text?", status = "primary",
-                           collapsible = TRUE, width = 8,
+              fluidRow(box(width = 12, title = "What can frequency plots tell us about the text?", status = "primary",
+                           collapsible = TRUE,
                            textOutput("freqMeaning"))),
               fluidRow(box(title = "Frequency Plot", status = "primary", 
                            collapsible = TRUE, width = 12,
@@ -134,16 +135,16 @@ ui <- dashboardPage(
                            plotOutput("simple_wordcloud", width = "100%") %>% shinycssloaders::withSpinner(),
                            sliderInput("num_words", "Number of words in the cloud:", 
                                        min = 0, max = 100, value = 50))),
-              actionButton('previous4', ' Previous Tab'),
-              actionButton('next4', ' Next Tab')
+              actionButton('previous4', ' Previous'),
+              actionButton('next4', ' Next')
       ),
       
       # Sentiment analysis plots content
       tabItem(tabName = "sentiment_plots",
-              fluidRow(box(title = "Overview", status = "primary",
+              fluidRow(box(width = 12, title = "Overview", status = "primary",
                            collapsible = TRUE,
                            textOutput("sentimentOverview"))),
-              fluidRow(box(title = "Remove Sentiment Words", status = "primary",
+              fluidRow(box(width =12, title = "Remove Sentiment Words", status = "primary",
                            collapsible = TRUE,
                            textOutput("removeSentiments"),
                            textInput("sentimentwords", "Enter words to remove
@@ -179,13 +180,13 @@ ui <- dashboardPage(
                            collapsible = TRUE, width = 12, 
                            textOutput("negateDescription"),
                            plotOutput("sentiment_negation") %>% shinycssloaders::withSpinner())),
-              actionButton('previous5', ' Previous Tab'),
-              actionButton('next5', ' Next Tab')
+              actionButton('previous5', ' Previous'),
+              actionButton('next5', ' Next')
       ),
       
       # Advanced plots content
       tabItem(tabName = "relationship_plots",
-              fluidRow(box(title = "Section Overview", status = "primary",
+              fluidRow(box(width = 12, title = "Section Overview", status = "primary",
                            collapsible = TRUE,
                            textOutput("advancedOverview"))),
               fluidRow(box(title = "Network Graph", status = "primary",
@@ -196,6 +197,7 @@ ui <- dashboardPage(
                              shinycssloaders::withSpinner(),
                            sliderInput("cooccur", "Change the minimum number of co-occurrences:", 
                                        min = 0, max = 200, value = 5))),
+              # might switch to this type of network graph later on, so keeping code here
               #box(title = "Network 2", status = "primary", solidHeader = TRUE,
               #   collapsible = TRUE, plotOutput("network2") %>% shinycssloaders::withSpinner()
               #  ),
@@ -212,16 +214,17 @@ ui <- dashboardPage(
                            textOutput("corrDescription"),
                            textInput("corr_words", "I want to see correlations with the word..."),
                            plotOutput("corr_comparison") %>% shinycssloaders::withSpinner())),
+              # correlation graph not satisfactory yet, still working on it
               #fluidRow(box(title = "Correlation Network Graph", status = "primary", solidHeader = TRUE,
                #            collapsible = TRUE, width = 12,
                 #           textOutput("corrnetworkDescription"),
                  #          plotOutput("corr_network") %>% shinycssloaders::withSpinner(),
                   #         sliderInput("corr", "Change the minimum correlation:", 
                    #                    min = 0, max = 1, value = 0.2))),
-              actionButton('previous6', ' Previous Tab')
-              #actionButton('next6', ' Next Tab')
+              actionButton('previous6', ' Previous')
+              #actionButton('next6', ' Next')
       )
-      
+      # Again, not displaying multiple files stuff yet since its incomplete
       #tabItem(tabName = "multipleFiles",
               #textOutput("multipleDescription"),
               #fluidRow(box(title = "Choose a faceting variable", status = "primary", solidHeader = TRUE,
@@ -236,7 +239,7 @@ ui <- dashboardPage(
                 #           plotlyOutput("freqPlotGroup") %>% shinycssloaders::withSpinner(),
                  #          sliderInput("freq_count", "Change the minimum frequency count:", 
                   #                     min = 0, max = 500, value = 50))),
-              #actionButton('previous7', ' Previous Tab')
+              #actionButton('previous7', ' Previous')
               
      # )
 )
@@ -249,49 +252,54 @@ server <- function(input, output, session) {
                               complex text data. Text data can be anything from a speech to your favorite 
                               novel to a poet’s entire set of work. This module seeks to give the user (you!) 
                               an introduction to the basics of text analytics. We will uncover the most 
-                              frequently used words, words with the strong emotional connotations, and 
+                              frequently used words, words with strong emotional connotations, and 
                               meaningful relationships between words in your text.")
   output$intro2 <- renderText("This module is meant to serve as an introduction to the world of text analysis. 
-                              We want to give people exposure to something they might not otherwise see. Text 
+                              We want to give you exposure to something they might not otherwise see. Text 
                               analytics can be intimidating and we want to make this introduction accessible 
                               to anyone who is interested.")
-  output$intro3 <- renderText("We hope this module will be useful to undergraduates students enrolled in introductory 
+  output$intro3 <- renderText("We hope this module will be useful to undergraduate students enrolled in introductory 
                               English and Linguistics as well as students interested in Statistics and Data Science.")
   
   
   
-  output$dataIntro <- renderText("First off, we need to choose the file that contains the text data that we want to analyze.
-                                 We can use .csv and .txt files to analyze our text data in the module. Please select a file from
-                                 your computer than meets these requirements and then we can get started!")
+  output$dataIntro <- renderText("First off, we need to choose a file that contains the text data that we want to analyze.
+                                 We can use .csv and .txt files in the module. Please select a file from
+                                 your computer that meets these requirements and then we can get started!")
   output$data1 <- renderText("Have a look at the extension of the file you chose - is it .csv or .txt? Knowing this will help
                              the program process your data.")
   output$data2 <- renderText("We can compare text across different pieces of text. If you have multiple files that 
                              you’d like to compare, please upload them above and check this box.")
   output$data3 <- renderText("Have a look at your file - are the names of the variables in the first line or 
                              does the text start right away?")
+
   
   data_set <- reactive({
     # got this code from this website:
     # https://itsalocke.com/blog/r-quick-tip-upload-multiple-files-in-shiny-and-consolidate-into-a-dataset/
-    req(input$file1)
     
+    if(input$choice == "built_in") {
+      data_set <- read.csv("peterpan.csv", header = T)
+    }
     
-    if(input$file_type == "csv") {
-      data_set <- as.data.frame(data.table::rbindlist(lapply(input$file1$datapath, data.table::fread),
-                                                      use.names = TRUE, fill = TRUE))
-    } else {
-      path_list <- as.list(input$files$datapath)
-      #tbl_list <- lapply(input$files$datapath, read.delim, header=FALSE, sep= " ")
-      #data_set <- do.call(rbind, tbl_list)
-      
-      data_set <- read.delim(input$file1$datapath, header = F)
+    else {
+      if(input$file_type == "csv") {
+        data_set <- as.data.frame(data.table::rbindlist(lapply(input$file1$datapath, data.table::fread),
+                                                        use.names = TRUE, fill = TRUE))
+      } else {
+        data_set <- read.delim(input$file1$datapath, header = F)
+        
+        # Code that might work to read in multiple text files
+        #tbl_list <- lapply(input$files$datapath, read.delim, header=FALSE, sep= " ")
+        #data_set <- do.call(rbind, tbl_list)
+      }
     }
   })
   
   
   observeEvent(
     input$submit, {
-      output$rawData <- renderText("Have a look at the data. Does it look how you expected?")
+      output$rawData <- renderText("Have a look at the data. Does it appear how you expected?")
       output$contents <- renderDataTable({
         if(input$disp == "head") {
           datatable(head(data_set()), options = list(paging = FALSE, scrollY = "300px"))
@@ -303,9 +311,9 @@ server <- function(input, output, session) {
     } 
   )
   
-  output$dataCleaning <- renderText("Sometimes there is part of the data that we don’t want to include in our analysis. F
-                                    or instance, you might want to remove the table of contents. After looking at the raw 
-                                    data, are there any lines that you would like to remove? If so, enter their line 
+  output$dataCleaning <- renderText("Sometimes there is part of the data that we don’t want to include in our analysis.
+                                    For instance, you might want to remove the table of contents or copyright information at the beginning of a book. 
+                                    After looking at the raw data, are there any lines that you would like to remove? If so, enter their line 
                                     numbers here.")
   
   new_data <- eventReactive(
@@ -333,18 +341,22 @@ server <- function(input, output, session) {
     }
   })
   
+  output$questions1 <- renderText("Before moving on, you might want to think about the following questions: Where did my
+                                  data come from? What variables are in it? Are there any issues with the data
+                                  that I know of?")
+  
   observe({
-    req(input$file1)
     updateSelectInput(session, "inSelect",
                       label = "Choose a token variable:",
                       choices = names(data_set()))
   })
   
   output$tokenVar <- renderText("Text analysis is run on variables called 
-token variables. These are units of one word, two words, or even whole sentences. In order to extract information from our text, we need to break it 
+                                token variables. These are units of one word, two words, or even whole sentences. 
+                                In order to extract information from our text, we need to break it 
                                 down into “pieces” that we care about. In this interface, we want to use
                                 one word per line of data. Please find the column that holds the 
-                                text data we want to break down.")
+                                text data you want to break down.")
   
   output$data4 <- renderText("There are many words in text data that occur so often that they don't have 
                              much meaning when we are trying to identify the major themes in a document. Examples of this type 
@@ -352,7 +364,7 @@ token variables. These are units of one word, two words, or even whole sentences
                             these words before processing the text. Feel free to run the analysis with them removed (which is standard) and then 
                              with them left in and take a look at the different results you get!")
   
-  output$stopWords <- renderText("If there are words from your text that you don’t 
+  output$stopWords <- renderText("If there are additional words from your text that you don’t 
                                  want to have included in the analysis, please enter them here. If you'd like to remove
                                  multiple words, simply separate each one by a single white space.")
   
@@ -383,6 +395,15 @@ token variables. These are units of one word, two words, or even whole sentences
   })
   
   # Frequency plot
+  output$freqMeaning <- renderText("Both of these plots give us a sense of the most commonly used words in the text. 
+                                   These can be helpful in determining the overall topic and what might be most important 
+                                   in the text. Consider some or all of the following questions as you look at each graph: 
+                                   What are the title and axis labels? What is the scale of each axis?
+                                   Were there user inputs for this plot? How did your choice of input affect what is shown?
+                                   Are each of the plots unique? If they appear to show the same information in different formats, can you identify why including each plot might be beneficial?
+                                   Provide a one sentence summary of the output displayed in this plot. 
+                                   What do these results mean in the context of your data?
+                                   ")
   output$freqDescription <- renderText("This plots displays the words that occur the most in your text. 
                                        Feel free to adjust slider to show words that occur more/less.")
   output$freqPlot <- renderPlot({
@@ -409,9 +430,6 @@ token variables. These are units of one word, two words, or even whole sentences
                                 colors = RColorBrewer::brewer.pal(3, "Dark2")))
   })
   
-  output$freqMeaning <- renderText("Both of these plots give us a sense of the most commonly used words in the text. 
-                                   These can be helpful in determining the overall topic and what might be most important 
-                                   in the text.")
   # SENTIMENT ANALYSIS SECTION
   output$sentimentOverview <- renderText("In this section we will attempt to identify the words that contribute most to the 
                                          sentiment of this piece of text. We do this by attaching sentiment lexicons, which 
@@ -530,7 +548,7 @@ token variables. These are units of one word, two words, or even whole sentences
       count(word, sentiment, sort = TRUE) %>%
       reshape2::acast(word ~ sentiment, value.var = "n", fill=1) %>%
       wordcloud::comparison.cloud(colors = c("orchid", "seagreen2"), max.words = input$num_words2, 
-                                  scale = c(4,0.5), title.size = 1)
+                                  scale = c(4, 0.5), title.size = 1)
   })
   
   # Data processing to get negated sentiment words
@@ -538,7 +556,7 @@ token variables. These are units of one word, two words, or even whole sentences
     token <- new_data()[,input$inSelect]
     bigram_data <- cbind(new_data(), token) %>%
       mutate(linenumber = row_number()) %>%
-      unnest_tokens(bigram, text, token = "ngrams", n=2) 
+      unnest_tokens(bigram, text, token = "ngrams", n = 2) 
   })
   
   separate_bigrams <- reactive ({
@@ -569,7 +587,7 @@ token variables. These are units of one word, two words, or even whole sentences
   output$negateDescription <- renderText("Although we are looking at the text one word at a time, we often need to consider 
                                          multiple words at once in order to get a better sense of what is going on in the 
                                          text. When you consider two words at a time, you can get a more nuanced sense of 
-                                         what is going, which can be important for sentiment analysis. For instance, if you 
+                                         what is happening, which can be important for sentiment analysis. For instance, if you 
                                          consider the word ‘happy’ by itself, it is counted as a positive word. But if it is 
                                          preceded by the word ‘not’, then the phrase ‘not happy’ should be categorized as 
                                          negative. This plot displays the words that are most commonly preceded by negation 
@@ -599,12 +617,12 @@ token variables. These are units of one word, two words, or even whole sentences
   output$advancedOverview <- renderText("Co-occurrence and correlation are two ways that we can begin to study the relationships between words in a document.
                                         Correlation and co-occurrence show similar ideas -- they both contain information about 
                                         how often words occur together. Correlation is slightly more nuanced than co-occurrence in 
-                                        that it also accounts for when words don’t occur together when calculating how strongly 
+                                        that it also accounts for when words *don’t* occur together when calculating how strongly 
                                         related they are.")
   
   # Co-occurrence network graph
   output$networkDescription <- renderText("This network graph shows words that occur next to each other often. The darker the arrow 
-                                          between them, the more times they co-occur. The arrows shows which order in which the words usually 
+                                          between them, the more times they co-occur. The arrow shows which order the words usually 
                                           occur. You can change the number of co-occurrences required for the pair to appear on the 
                                           graph. This gives a sense of words that commonly appear together. ")
   output$network <- renderPlot ({
@@ -717,7 +735,6 @@ token variables. These are units of one word, two words, or even whole sentences
                                 will be some sort of ID variable.")
   
   observe({
-    req(input$file1)
     updateSelectInput(session, "inSelectGroup",
                       label = "Choose a facet variable:",
                       choices = names(data_set()))
