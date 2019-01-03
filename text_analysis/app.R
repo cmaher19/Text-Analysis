@@ -30,15 +30,14 @@ ui <- dashboardPage(
     tabItems(
       # Introduction content
       tabItem(tabName = "introduction", 
-              fluidRow(box(width = 12,
-                title = "Introduction", status = "primary", 
-                collapsible = TRUE,
-                textOutput("intro1"),
-                br(),
-                textOutput("intro2"),
-                br(),
-                textOutput("intro3"),
-                br()
+              fluidRow(box(title = "Introduction", status = "primary", 
+                           collapsible = TRUE, width = 12,
+                           textOutput("intro1"),
+                           br(),
+                           textOutput("intro2"),
+                           br(),
+                           textOutput("intro3"),
+                           br()
               )),
               actionButton('next1', ' Next')
               
@@ -48,27 +47,30 @@ ui <- dashboardPage(
       tabItem(tabName = "data_upload",
               fluidRow(box(title="Choose a CSV/Text File", status = "primary", 
                            collapsible = TRUE, width = 12,
-                           # got this from the help menu for fileInput
                            textOutput("dataIntro"),
+                           br(),
                            radioButtons("choice", "Would you like to use your own data or 
                                         choose the provided Peter Pan dataset?",
                                         choices = c("Peter Pan" = "built_in", "Use my own" = "my_own"),
                                         selected  = "built_in"),
                            br(),
-                           fileInput("file1", label = NULL, multiple = TRUE,
-                                     accept = c("text/csv", "text/comma-separated-values, text/plain", ".csv")),
-                           textOutput("data1"),
-                           radioButtons("file_type", "What type of file(s)?", 
-                                        choices = c("CSV" = "csv", "TXT" = "txt")),
-                           # commenting out multiple files option for now, since it isn't developed enough yet
-                           #textOutput("data2"),
-                           #checkboxInput("multiple_files", strong("Are there multiple files?"), FALSE),
-                           textOutput("data3"),
-                           checkboxInput("header", strong("Are there variable names in the first line?"), FALSE),
-                           radioButtons("disp", "How much raw data would you like to see?",
-                                        choices = c('First few lines' = "head",
-                                                    'Every line' = "all"),
-                                        selected = "head"),
+                           conditionalPanel(
+                             condition = "input.choice == 'my_own'",
+                             fileInput("file1", label = NULL, multiple = TRUE,
+                                       accept = c("text/csv", "text/comma-separated-values, text/plain", ".csv")),
+                             textOutput("data1"),
+                             radioButtons("file_type", "What type of file(s)?", 
+                                          choices = c("CSV" = "csv", "TXT" = "txt")),
+                             # Multiple files option to come
+                             #textOutput("data2"),
+                             #checkboxInput("multiple_files", strong("Are there multiple files?"), FALSE),
+                             textOutput("data3"),
+                             checkboxInput("header", strong("Are there variable names in the first line?"), FALSE),
+                             radioButtons("disp", "How much raw data would you like to see?",
+                                          choices = c('First few lines' = "head",
+                                                      'Every line' = "all"),
+                                          selected = "head")
+                             ),
                            actionButton("submit", "Click here to display data"))),
               fluidRow(box(title="Raw Data", status = "primary",
                            collapsible = TRUE, width = 12,
@@ -78,14 +80,17 @@ ui <- dashboardPage(
                            collapsible = TRUE, width = 12,
                            textOutput("dataCleaning"),
                            br(),
-                           numericInput("start_line", "Line number to begin removal", value = 1),
-                           numericInput("end_line", "Line number to end removal",
-                                        value=1),
-                           checkboxInput("no_removal", "I do not want to remove any lines of data", FALSE),
-                           radioButtons("disp1", "How much modified data would you like to see?",
-                                        choices = c('First few lines' = "head",
-                                                    'Every line' = "all"),
-                                        selected = "head"),
+                           radioButtons("line_removal", "Would you like to remove any lines of data?",
+                                        choices = c("No, I want to keep the data as is" = "no",
+                                                    "Yes, I want to remove data" = "yes")),
+                           conditionalPanel(condition = "input.line_removal == 'yes'",
+                                            numericInput("start_line", "Line number to begin removal", value = 1),
+                                            numericInput("end_line", "Line number to end removal",
+                                                         value=1),
+                                            radioButtons("disp1", "How much modified data would you like to see?",
+                                                         choices = c('First few lines' = "head",
+                                                                     'Every line' = "all"),
+                                                         selected = "head")),
                            actionButton("update", "Update Data"))),
               fluidRow(box(title="Modified Data", status = "primary", 
                            collapsible = TRUE, width = 12,
@@ -99,15 +104,15 @@ ui <- dashboardPage(
       ),
       
       tabItem(tabName = "to_know",
-              fluidRow(box(width = 12, title = "Token Variable", status = "primary", 
-                           collapsible = TRUE,
+              fluidRow(box(title = "Token Variable", status = "primary", 
+                           collapsible = TRUE, width = 12,
                            textOutput("tokenVar"),
                            br(),
                            selectInput("inSelect", label = NULL,
                                        c("Variable 1" = "option1",
                                          "Variable 2" = "option2")))),
-              fluidRow(box(width = 12, title = "Stop Words", status = "primary", 
-                           collapsible = TRUE,
+              fluidRow(box(title = "Stop Words", status = "primary", 
+                           collapsible = TRUE, width = 12,
                            textOutput("data4"),
                            checkboxInput("remove_stopwords", strong("Remove stop words"), TRUE),
                            textOutput("stopWords"),
@@ -120,8 +125,8 @@ ui <- dashboardPage(
       
       # Frequency plots content
       tabItem(tabName = "freq_plots", 
-              fluidRow(box(width = 12, title = "What can frequency plots tell us about the text?", status = "primary",
-                           collapsible = TRUE,
+              fluidRow(box(title = "What can frequency plots tell us about the text?", status = "primary",
+                           collapsible = TRUE, width = 12, 
                            textOutput("freqMeaning"))),
               fluidRow(box(title = "Frequency Plot", status = "primary", 
                            collapsible = TRUE, width = 12,
@@ -141,11 +146,11 @@ ui <- dashboardPage(
       
       # Sentiment analysis plots content
       tabItem(tabName = "sentiment_plots",
-              fluidRow(box(width = 12, title = "Overview", status = "primary",
-                           collapsible = TRUE,
+              fluidRow(box(title = "Overview", status = "primary",
+                           collapsible = TRUE, width = 12,
                            textOutput("sentimentOverview"))),
-              fluidRow(box(width =12, title = "Remove Sentiment Words", status = "primary",
-                           collapsible = TRUE,
+              fluidRow(box(title = "Remove Sentiment Words", status = "primary",
+                           collapsible = TRUE, width =12,
                            textOutput("removeSentiments"),
                            textInput("sentimentwords", "Enter words to remove
                                      and separate each of them by a single space."))),
@@ -186,8 +191,8 @@ ui <- dashboardPage(
       
       # Advanced plots content
       tabItem(tabName = "relationship_plots",
-              fluidRow(box(width = 12, title = "Section Overview", status = "primary",
-                           collapsible = TRUE,
+              fluidRow(box(title = "Section Overview", status = "primary",
+                           collapsible = TRUE, width = 12,
                            textOutput("advancedOverview"))),
               fluidRow(box(title = "Network Graph", status = "primary",
                            collapsible = TRUE, width = 12,
@@ -320,10 +325,10 @@ server <- function(input, output, session) {
     input$update, {
       output$dataUpdate <- renderText("Check out the modified data. If you removed some data, does it look better now? 
                                       If not, feel free to change which lines you removed up above.")
-      if(input$no_removal == FALSE && input$file_type == "csv") {
+      if(input$line_removal == "yes" && input$file_type == "csv") {
         data_set()[-c(input$start_line:input$end_line), ]
       }
-      else if(input$no_removal == FALSE && input$file_type != "csv") {
+      else if(input$line_removal == "yes" && input$file_type != "csv") {
         as.data.frame(data_set()[-c(input$start_line:input$end_line), ]) %>%
           dplyr::rename("V1" = "data_set()[-c(input$start_line:input$end_line), ]")
       } else {
