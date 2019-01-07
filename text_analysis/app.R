@@ -133,7 +133,7 @@ ui <- dashboardPage(
                            collapsible = TRUE, width = 12,
                            textOutput("freqDescription"),
                            plotOutput("freqPlot") %>% shinycssloaders::withSpinner(),
-                           uiOutput("selected_words"),
+                           uiOutput("selected_words1"),
                            br(),
                            sliderInput("freq_count", "Choose the number of words you'd like to display:", 
                                        min = 0, max = 25, value = 10))),
@@ -141,14 +141,14 @@ ui <- dashboardPage(
                            collapsible = TRUE, width = 7,
                            textOutput("wordcloudDescription"),
                            plotOutput("simple_wordcloud", width = "100%") %>% shinycssloaders::withSpinner(),
+                           uiOutput("selected_words2"),
                            sliderInput("num_words", "Number of words in the cloud:", 
-                                       min = 0, max = 100, value = 50),
-                           uiOutput("selected_words")),
+                                       min = 0, max = 100, value = 50)),
                        box(title = "Most Common Bigrams", status = "primary",
                            collapsible = TRUE, width = 5,
                            textOutput("bigram_description"),
                            tableOutput("bigram_freq") %>% shinycssloaders::withSpinner(),
-                           uiOutput("selected_words"))),
+                           uiOutput("selected_words3"))),
               actionButton('previous4', ' Previous'),
               actionButton('next4', ' Next')
       ),
@@ -348,7 +348,7 @@ server <- function(input, output, session) {
       }
     }
   )
-  # only shows head of modified data - may want to make you able to see all
+
   output$result <- renderDataTable({
     if(input$disp1 == "head") {
       datatable(head(new_data()), options = list(paging = FALSE, scrollY = "300px"))
@@ -421,8 +421,19 @@ server <- function(input, output, session) {
   })
   
   # List of removed words
-  output$selected_words <- renderUI({
-    
+  output$selected_words1 <- renderUI({
+    if(is.null(input$stopwords)) {
+      strong(paste("You didn't remove any additional stop words.", input$stopwords))
+    } else {
+      strong(paste("Remember you removed the following words:", input$stopwords))
+    }
+  })
+  
+  output$selected_words2 <- renderUI({
+    strong(paste("Remember you removed the following words:", input$stopwords))
+  })
+  
+  output$selected_words3 <- renderUI({
     strong(paste("Remember you removed the following words:", input$stopwords))
   })
   
@@ -504,7 +515,6 @@ server <- function(input, output, session) {
       ylab("Word Score") + xlab("Word") + theme(axis.text=element_text(size=12),
                                                 axis.title=element_text(size=14,face="bold"),
                                                 plot.title=element_text(size=14, face="bold"))
-    #  ggplotly(g1)
   })
   
   # Bing sentiment graph
@@ -672,7 +682,7 @@ server <- function(input, output, session) {
       theme_void()
   })
   
-  
+  # Not outputting this currently
   output$network2 <- visNetwork::renderVisNetwork ({
     g1 <- clean_bigrams() %>% 
       filter(!is.na(word1)) %>% filter(!is.na(word2)) %>% filter(n > 3) %>% 
@@ -713,7 +723,7 @@ server <- function(input, output, session) {
   word_cors <- reactive ({
     data_sections() %>%
       group_by(word) %>%
-      filter(n() >= 20) %>% # will eventually want to make this value a user input
+      filter(n() >= 10) %>% # will eventually want to make this value a user input
       pairwise_cor(word, section, sort = TRUE)
   })
   
