@@ -100,7 +100,7 @@ ui <- dashboardPage(
                            dataTableOutput("result"))),
               fluidRow(box(title="Reflection", status = "primary", 
                            collapsible = TRUE, width = 12,
-                           textOutput("questions1"))),
+                           textOutput("questions1"),  uiOutput("questions2"))),
               actionButton('previous2', ' Previous'),
               actionButton('next2', ' Next')
       ),
@@ -119,8 +119,7 @@ ui <- dashboardPage(
                            checkboxInput("remove_stopwords", strong("Remove stop words"), TRUE),
                            textOutput("stopWords"),
                            br(),
-                           textInput("stopwords", "Enter words to remove here:"),
-                           textOutput("removal"))),
+                           textInput("stopwords", "Enter words to remove here:"))),
               actionButton('previous3', ' Previous'),
               actionButton('next3', ' Next')
       ),
@@ -129,19 +128,25 @@ ui <- dashboardPage(
       tabItem(tabName = "freq_plots", 
               fluidRow(box(title = "What can frequency plots tell us about the text?", status = "primary",
                            collapsible = TRUE, width = 12, 
-                           textOutput("freqMeaning"))),
+                           textOutput("freqMeaning"), uiOutput("questions3"))),
               fluidRow(box(title = "Frequency Plot", status = "primary", 
                            collapsible = TRUE, width = 12,
                            textOutput("freqDescription"),
                            plotOutput("freqPlot") %>% shinycssloaders::withSpinner(),
+                           uiOutput("selected_words"),
+                           br(),
                            sliderInput("freq_count", "Choose the number of words you'd like to display:", 
                                        min = 0, max = 25, value = 10))),
               fluidRow(box(title = "Wordcloud", status = "primary",
-                           collapsible = TRUE, width = 12,
+                           collapsible = TRUE, width = 7,
                            textOutput("wordcloudDescription"),
                            plotOutput("simple_wordcloud", width = "100%") %>% shinycssloaders::withSpinner(),
                            sliderInput("num_words", "Number of words in the cloud:", 
-                                       min = 0, max = 100, value = 50))),
+                                       min = 0, max = 100, value = 50)),
+                       box(title = "Most Common Bigrams", status = "primary",
+                           collapsible = TRUE, width = 5,
+                           textOutput("bigram_description"),
+                           tableOutput("bigram_freq") %>% shinycssloaders::withSpinner())),
               actionButton('previous4', ' Previous'),
               actionButton('next4', ' Next')
       ),
@@ -211,7 +216,7 @@ ui <- dashboardPage(
               #   collapsible = TRUE, plotOutput("network2") %>% shinycssloaders::withSpinner()
               #  ),
               fluidRow(box(title = "Co-occurrence Count", status = "primary",
-                           collapsible = TRUE, width = 12,
+                           collapsible = TRUE,
                            #   plotOutput("network2") %>% shinycssloaders::withSpinner()
                            #  ),
                            textOutput("countDescription"),
@@ -350,9 +355,12 @@ server <- function(input, output, session) {
     }
   })
   
-  output$questions1 <- renderText("Before moving on, you might want to think about the following questions: Where did my
-                                  data come from? What variables are in it? Are there any issues with the data
-                                  that I know of?")
+  output$questions1 <- renderText("Before moving on, you might want to think about the following questions:")
+  output$questions2 <- renderUI(tags$ul(
+    tags$li("Where did my data come from?"),
+    tags$li("What variables are in it (if any)?"),
+    tags$li("Are there any issues with the data that I know of?")
+  ))
   
   observe({
     updateSelectInput(session, "inSelect",
@@ -364,8 +372,8 @@ server <- function(input, output, session) {
                                 token variables. These are units of one word, two words, or even whole sentences. 
                                 In order to extract information from our text, we need to break it 
                                 down into “pieces” that we care about. In this interface, we want to use
-                                one word per line of data. Please find the column that holds the 
-                                text data you want to break down.")
+                                one word per line of data and also want to remove any extraneous characters that may be present.
+                                Please find the column that holds the text data you want to break down.")
   
   output$data4 <- renderText("There are many words in text data that occur so often that they don't have 
                              much meaning when we are trying to identify the major themes in a document. Examples of this type 
@@ -409,16 +417,26 @@ server <- function(input, output, session) {
     
   })
   
+  # List of removed words
+  output$selected_words <- renderUI({
+    
+    paste("Remember you removed the following words:", input$stopwords)
+  })
+  
   # Frequency plot
   output$freqMeaning <- renderText("Both of these plots give us a sense of the most commonly used words in the text. 
                                    These can be helpful in determining the overall topic and what might be most important 
-                                   in the text. Consider some or all of the following questions as you look at each graph: 
-                                   What are the title and axis labels? What is the scale of each axis?
-                                   Were there user inputs for this plot? How did your choice of input affect what is shown?
-                                   Are each of the plots unique? If they appear to show the same information in different formats, can you identify why including each plot might be beneficial?
-                                   Provide a one sentence summary of the output displayed in this plot. 
-                                   What do these results mean in the context of your data?
-                                   ")
+                                   in the text. Consider some or all of the following questions as you look at each graph:")
+  output$questions3 <- renderUI(tags$ul(
+    tags$li("What are the title and axis labels? What is the scale of each axis?"),
+    tags$li("Were there user inputs for this plot?"),
+    tags$li("How did your choice of input affect what is shown?"), 
+    tags$li("Are each of the plots unique?"),
+    tags$li("If they appear to show the same information in different formats, can you identify why including each plot might be beneficial?"),
+    tags$li("Provide a one sentence summary of the output displayed in this plot."),
+    tags$li("What do these results mean in the context of your data?")
+  ))
+  
   output$freqDescription <- renderText("This plots displays the words that occur the most in your text. 
                                        Feel free to adjust slider to show words that occur more/less.")
   output$freqPlot <- renderPlot({
@@ -591,11 +609,6 @@ server <- function(input, output, session) {
       count(word1, word2, sort=TRUE)
   })
   
-  # Not sure if I'll end up needing this one but I'll leave it for now
-  united_bigrams <- reactive ({
-    united_bigrams <- clean_bigrams() %>%
-      unite(bigram, word1, word2, sep = " ")
-  })
   
   # Negated sentiment words plot
   negation <- c("not", "no", "never", "without")
@@ -726,6 +739,23 @@ server <- function(input, output, session) {
       xlab("Correlation") + ylab("Word") +
       theme(axis.text = element_text(size = 12), axis.title = element_text(size = 14,face = "bold"), 
             plot.title = element_text(size = 16, face = "bold"), strip.text.x = element_text(size = 12)) 
+  })
+  
+  # Unite bigrams to use in frequency table
+  united_bigrams <- reactive ({
+    united_bigrams <- clean_bigrams() %>%
+      filter(!is.na(word1) & !is.na(word2)) %>%
+      unite(bigram, word1, word2, sep = " ")
+  })
+  
+  # Bigram frequency plot
+  output$bigram_description <- renderText("When breaking a text down, we often create one word tokens. Although one word tokens
+                                          are the main focus of this project, there are benefits to looking at multiple words at a time.
+                                          For instance, we might want to look at two word tokens (called bigrams). 
+                                          Here are the most common bigrams in the text:")
+  output$bigram_freq <- renderTable ({
+    freq_data <- united_bigrams() %>% rename("Bigram" = "bigram", "Count" = "n")
+    head(freq_data, 13)
   })
   
   # Correlation Network
