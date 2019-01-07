@@ -142,11 +142,13 @@ ui <- dashboardPage(
                            textOutput("wordcloudDescription"),
                            plotOutput("simple_wordcloud", width = "100%") %>% shinycssloaders::withSpinner(),
                            sliderInput("num_words", "Number of words in the cloud:", 
-                                       min = 0, max = 100, value = 50)),
+                                       min = 0, max = 100, value = 50),
+                           uiOutput("selected_words")),
                        box(title = "Most Common Bigrams", status = "primary",
                            collapsible = TRUE, width = 5,
                            textOutput("bigram_description"),
-                           tableOutput("bigram_freq") %>% shinycssloaders::withSpinner())),
+                           tableOutput("bigram_freq") %>% shinycssloaders::withSpinner(),
+                           uiOutput("selected_words"))),
               actionButton('previous4', ' Previous'),
               actionButton('next4', ' Next')
       ),
@@ -313,7 +315,8 @@ server <- function(input, output, session) {
   
   observeEvent(
     input$submit, {
-      output$rawData <- renderText("Have a look at the data. Does it appear how you expected?")
+      output$rawData <- renderText("Have a look at the data. Does it appear how you expected? Feel free to use the 'search' function to
+                                   locate certain words or phrases within the document.")
       output$contents <- renderDataTable({
         if(input$disp == "head") {
           datatable(head(data_set()), options = list(paging = FALSE, scrollY = "300px"))
@@ -420,7 +423,7 @@ server <- function(input, output, session) {
   # List of removed words
   output$selected_words <- renderUI({
     
-    paste("Remember you removed the following words:", input$stopwords)
+    strong(paste("Remember you removed the following words:", input$stopwords))
   })
   
   # Frequency plot
