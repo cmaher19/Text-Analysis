@@ -65,12 +65,12 @@ ui <- dashboardPage(
                              #textOutput("data2"),
                              #checkboxInput("multiple_files", strong("Are there multiple files?"), FALSE),
                              textOutput("data3"),
-                             checkboxInput("header", strong("Are there variable names in the first line?"), FALSE),
-                             radioButtons("disp", "How much raw data would you like to see?",
-                                          choices = c('First few lines' = "head",
-                                                      'Every line' = "all"),
-                                          selected = "head")
+                             checkboxInput("header", strong("Are there variable names in the first line?"), FALSE)
                              ),
+                           radioButtons("disp", "How much raw data would you like to see?",
+                                        choices = c('First few lines' = "head",
+                                                    'Every line' = "all"),
+                                        selected = "head"),
                            actionButton("submit", "Click here to display data"))),
               fluidRow(box(title="Raw Data", status = "primary",
                            collapsible = TRUE, width = 12,
@@ -86,11 +86,12 @@ ui <- dashboardPage(
                            conditionalPanel(condition = "input.line_removal == 'yes'",
                                             numericInput("start_line", "Line number to begin removal", value = 1),
                                             numericInput("end_line", "Line number to end removal",
-                                                         value=1),
-                                            radioButtons("disp1", "How much modified data would you like to see?",
-                                                         choices = c('First few lines' = "head",
-                                                                     'Every line' = "all"),
-                                                         selected = "head")),
+                                                         value=1)
+                                            ),
+                           radioButtons("disp1", "How much modified data would you like to see?",
+                                        choices = c('First few lines' = "head",
+                                                    'Every line' = "all"),
+                                        selected = "head"),
                            actionButton("update", "Update Data"))),
               fluidRow(box(title="Modified Data", status = "primary", 
                            collapsible = TRUE, width = 12,
@@ -163,7 +164,9 @@ ui <- dashboardPage(
               fluidRow(box(title = "Bing Sentiments", status = "primary",
                            collapsible = TRUE, width = 12,
                            textOutput("bingDescription"),
-                           plotOutput("bing_sentiment") %>% shinycssloaders::withSpinner())),
+                           plotOutput("bing_sentiment") %>% shinycssloaders::withSpinner(),
+                           sliderInput("word_score1", "Keep word scores greater than: ",
+                                       min = 0, max = 100, value = 10))),
               fluidRow(box(title = "Sentiment Analysis Broken Down", status = "primary",
                            collapsible = TRUE, width = 12,
                            textOutput("chunkDescription"),
@@ -491,7 +494,7 @@ server <- function(input, output, session) {
       filter(word %nin% s_word_removal) %>%
       group_by(sentiment) %>%
       count(word, sort=TRUE) %>%
-      top_n(10) %>%
+      filter(n >= input$word_score1) %>%
       ungroup() %>%
       mutate(word = reorder(word, n)) %>%
       ggplot(aes(word, n, fill=sentiment)) + geom_col(show.legend = FALSE) + 
@@ -561,7 +564,7 @@ server <- function(input, output, session) {
     token <- new_data()[,input$inSelect]
     bigram_data <- cbind(new_data(), token) %>%
       mutate(linenumber = row_number()) %>%
-      unnest_tokens(bigram, text, token = "ngrams", n = 2) 
+      unnest_tokens(bigram, token, token = "ngrams", n = 2) 
   })
   
   separate_bigrams <- reactive ({
@@ -696,7 +699,7 @@ server <- function(input, output, session) {
                                        means they appear together a lot and also don’t appear often by themselves. Type in words 
                                        that you’re interested in seeing relationships with. Feel free to enter multiple words by 
                                        separating them by a single space. Correlations range between 0 and 1 with zero being no 
-                                       association and 1 being fully strong.")
+                                       association and 1 meaning they are always present together and never appear without each other.")
   output$corr_comparison <- renderPlot ({
     req(input$corr_words)
     
