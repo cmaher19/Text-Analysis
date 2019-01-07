@@ -8,8 +8,10 @@ library(tidyverse)
 library(widyr)
 library(igraph)
 library(ggraph)
-library(visNetwork)
+#library(visNetwork)
 library(DT)
+#library(SnowballC)
+library(corpus)
 
 
 ui <- dashboardPage(
@@ -91,8 +93,7 @@ ui <- dashboardPage(
                            radioButtons("disp1", "How much modified data would you like to see?",
                                         choices = c('First few lines' = "head",
                                                     'Every line' = "all"),
-                                        selected = "head"),
-                           actionButton("update", "Update Data"))),
+                                        selected = "head"))),
               fluidRow(box(title="Modified Data", status = "primary", 
                            collapsible = TRUE, width = 12,
                            textOutput("dataUpdate"),
@@ -133,8 +134,8 @@ ui <- dashboardPage(
                            collapsible = TRUE, width = 12,
                            textOutput("freqDescription"),
                            plotOutput("freqPlot") %>% shinycssloaders::withSpinner(),
-                           sliderInput("freq_count", "Change the minimum frequency count:", 
-                                       min = 0, max = 500, value = 50))),
+                           sliderInput("freq_count", "Choose the number of words you'd like to display:", 
+                                       min = 0, max = 25, value = 10))),
               fluidRow(box(title = "Wordcloud", status = "primary",
                            collapsible = TRUE, width = 12,
                            textOutput("wordcloudDescription"),
@@ -324,8 +325,8 @@ server <- function(input, output, session) {
                                     After looking at the raw data, are there any lines that you would like to remove? If so, enter their line 
                                     numbers here.")
   
-  new_data <- eventReactive(
-    input$update, {
+  new_data <- reactive(
+    {
       output$dataUpdate <- renderText("Check out the modified data. If you removed some data, does it look better now? 
                                       If not, feel free to change which lines you removed up above.")
       if(input$line_removal == "yes" && input$file_type == "csv") {
@@ -389,6 +390,9 @@ server <- function(input, output, session) {
                chapter = cumsum(str_detect(text, regex("^chapter ", 
                                                        ignore_case = TRUE)))) %>%
         unnest_tokens(word, text) %>%
+        # Attempt to stem words here - doesn't work yet
+        #mutate(word = wordStem(word)) %>%
+        #text_tokens(text, stemmer = "en") %>%
         filter(word %nin% word_removal) %>%
         anti_join(stop_words)
     } else {
@@ -397,6 +401,9 @@ server <- function(input, output, session) {
                chapter = cumsum(str_detect(text, regex("^chapter ", 
                                                        ignore_case = TRUE)))) %>%
         unnest_tokens(word, text) %>%
+        # Attempt to stem words here - doesn't work yet
+        #mutate(word = wordStem(word)) %>%
+        #text_tokens(text, stemmer = "en") %>%
         filter(word %nin% word_removal)
     }
     
@@ -417,7 +424,8 @@ server <- function(input, output, session) {
   output$freqPlot <- renderPlot({
     plotdata() %>%
       count(word) %>%
-      filter(n > input$freq_count) %>%
+      top_n(input$freq_count) %>%
+      #filter(n > input$freq_count) %>%
       mutate(word = reorder(word, n)) %>%
       ggplot(aes(word, n)) + geom_col(fill="purple") + coord_flip() + ggtitle("Most Common Words in the Data") +
       ylab("Count") + xlab("Word") + theme(axis.text=element_text(size=12),
