@@ -23,8 +23,8 @@ ui <- dashboardPage(
                 menuItem("3: Data Wrangling", tabName = "to_know", icon = icon("table")),
                 menuItem("4: Frequency Plots", tabName = "freq_plots", icon = icon("bar-chart-o")),
                 menuItem("5: Sentiment Analysis", tabName = "sentiment_plots", icon = icon("bar-chart-o")),
-                menuItem("6: Visualizing Relationships", tabName = "relationship_plots", icon = icon("bar-chart-o"))
-                #menuItem("7: Multiple Files", tabName = "multipleFiles", icon = icon("list-alt"))
+                menuItem("6: Visualizing Relationships", tabName = "relationship_plots", icon = icon("bar-chart-o")),
+                menuItem("7: Multiple Files", tabName = "multipleFiles", icon = icon("list-alt"))
     )
   ),
   
@@ -237,27 +237,30 @@ ui <- dashboardPage(
                  #          plotOutput("corr_network") %>% shinycssloaders::withSpinner(),
                   #         sliderInput("corr", "Change the minimum correlation:", 
                    #                    min = 0, max = 1, value = 0.2))),
-              actionButton('previous6', ' Previous')
-              #actionButton('next6', ' Next')
-      )
-      # Again, not displaying multiple files stuff yet since its incomplete
-      #tabItem(tabName = "multipleFiles",
-              #textOutput("multipleDescription"),
-              #fluidRow(box(title = "Choose a faceting variable", status = "primary", solidHeader = TRUE,
-               #            collapsible = TRUE,
-                #           textOutput("facetVar"),
-                 #          br(),
-                  #         selectInput("inSelectGroup", label=NULL,
-                   #                    c("Variable 1" = "option1",
-                    #                     "Variable 2" = "option2")))),
-              #fluidRow(box(title = "Frequency Plot", status = "primary", solidHeader = TRUE,
-               #            collapsible = TRUE, width = 12,
-                #           plotlyOutput("freqPlotGroup") %>% shinycssloaders::withSpinner(),
-                 #          sliderInput("freq_count", "Change the minimum frequency count:", 
-                  #                     min = 0, max = 500, value = 50))),
-              #actionButton('previous7', ' Previous')
+              actionButton('previous6', ' Previous'),
+              actionButton('next6', ' Next')
+      ),
+      
+      # Multiple Files Tab
+      tabItem(tabName = "multipleFiles",
+              textOutput("multipleDescription"),
+              br(),
+              fluidRow(box(title = "Choose a faceting variable", status = "primary", solidHeader = TRUE,
+                           collapsible = TRUE,
+                           textOutput("facetVar"),
+                           br(),
+                           selectInput("inSelectGroup", label=NULL,
+                                       c("Variable 1" = "option1",
+                                         "Variable 2" = "option2")))),
+              fluidRow(box(title = "Frequency Plot", status = "primary", solidHeader = TRUE,
+                           collapsible = TRUE, width = 12,
+                           plotOutput("freqPlotGroup") %>% shinycssloaders::withSpinner(),
+                           sliderInput("freq_count2", "Choose the number of words you'd like to display:", 
+                                       min = 0, max = 25, value = 10)),
+                       tableOutput("testing")),
+              actionButton("previous7", "Previous")
               
-     # )
+      )
 )
   )
 )
@@ -457,7 +460,6 @@ server <- function(input, output, session) {
     plotdata() %>%
       count(word) %>%
       top_n(input$freq_count) %>%
-      #filter(n > input$freq_count) %>%
       mutate(word = reorder(word, n)) %>%
       ggplot(aes(word, n)) + geom_col(fill="purple") + coord_flip() + ggtitle("Most Common Words in the Data") +
       ylab("Count") + xlab("Word") + theme(axis.text=element_text(size=12),
@@ -800,14 +802,38 @@ server <- function(input, output, session) {
   })
   
   output$freqPlotGroup <- renderPlot ({
-    plotdata() %>%
+    
+    #req(input$inSelectGroup)
+    
+    #plotdata() %>%
+      #group_by(input$inSelectGroup) %>%
+     # count(word) %>%
+      #top_n(input$freq_count2) %>% 
+      #ungroup() %>%
+      #mutate(word = reorder(word, n)) %>%
+      #ggplot(aes(word, n)) + 
+      #geom_bar(stat = "identity", show.legend=FALSE) +
+      #geom_col(fill="purple", show.legend = FALSE) + 
+      #facet_wrap(~input$inSelectGroup, scales = "free_y") + coord_flip() + 
+      #ggtitle("Most Common Words in the Data") + ylab("Count") + xlab("Word") + 
+      #theme(axis.text = element_text(size = 12), axis.title = element_text(size = 14,face = "bold"),
+       #     plot.title = element_text(size = 16, face = "bold"), strip.text.x = element_text(size = 12))
+    
+    facetVar <- data_set()[,input$inSelectGroup]
+    cbind(plotdata(), facetVar) %>%
       count(word) %>%
-      filter(n > input$freq_count) %>% # will eventually want to make this a user input
+      top_n(input$freq_count2) %>%
       mutate(word = reorder(word, n)) %>%
-      ggplot(aes(word, n)) + geom_col(fill="purple") + coord_flip() + ggtitle('Most Common Words in the Data') +
-      facet_grid(input$inSelectGroup ~ .) + ylab("Count") + xlab("Word") + theme(axis.text=element_text(size=12),
-                                                                                 axis.title=element_text(size=14,face="bold"),
-                                                                                 plot.title=element_text(size=16, face="bold"))
+      ggplot(aes(word, n)) + geom_col(fill="purple") + 
+      facet_wrap(~facetVar) +
+      coord_flip() + ggtitle("Most Common Words in the Data") +
+      ylab("Count") + xlab("Word") + theme(axis.text=element_text(size=12),
+                                           axis.title=element_text(size=14,face="bold"),
+                                           plot.title=element_text(size=16, face="bold"))
+  })
+  
+  output$testing <- renderTable ({
+    head(plotdata())
   })
   
   
@@ -837,10 +863,10 @@ server <- function(input, output, session) {
                    selected = "relationship_plots")
   })
   
-  #observeEvent(input$next6, {
-    #updateTabItems(session, "sidebar",
-     #              selected = "multipleFiles")
-  #})
+  observeEvent(input$next6, {
+    updateTabItems(session, "sidebar",
+                   selected = "multipleFiles")
+  })
   
   
   observeEvent(input$previous2, {
