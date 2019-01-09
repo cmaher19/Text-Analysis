@@ -8,7 +8,6 @@ library(tidyverse)
 library(widyr)
 library(igraph)
 library(ggraph)
-#library(visNetwork)
 library(DT)
 #library(SnowballC)
 library(corpus)
@@ -41,7 +40,7 @@ ui <- dashboardPage(
                            textOutput("intro3"),
                            br()
               )),
-              actionButton('next1', ' Next')
+              actionButton("next1", " Next")
               
       ),
       
@@ -55,7 +54,6 @@ ui <- dashboardPage(
                                         choose the provided Peter Pan dataset?",
                                         choices = c("Peter Pan" = "built_in", "Use my own" = "my_own"),
                                         selected  = "built_in"),
-                           br(),
                            conditionalPanel(
                              condition = "input.choice == 'my_own'",
                              fileInput("file1", label = NULL, multiple = TRUE,
@@ -63,9 +61,6 @@ ui <- dashboardPage(
                              textOutput("data1"),
                              radioButtons("file_type", "What type of file(s)?", 
                                           choices = c("CSV" = "csv", "TXT" = "txt")),
-                             # Multiple files option to come
-                             #textOutput("data2"),
-                             #checkboxInput("multiple_files", strong("Are there multiple files?"), FALSE),
                              textOutput("data3"),
                              checkboxInput("header", strong("Are there variable names in the first line?"), FALSE)
                              ),
@@ -101,8 +96,8 @@ ui <- dashboardPage(
               fluidRow(box(title="Reflection", status = "primary", 
                            collapsible = TRUE, width = 12,
                            textOutput("questions1"),  uiOutput("questions2"))),
-              actionButton('previous2', ' Previous'),
-              actionButton('next2', ' Next')
+              actionButton("previous2", " Previous"),
+              actionButton("next2", " Next")
       ),
       
       tabItem(tabName = "to_know",
@@ -120,8 +115,8 @@ ui <- dashboardPage(
                            textOutput("stopWords"),
                            br(),
                            textInput("stopwords", "Enter words to remove here:"))),
-              actionButton('previous3', ' Previous'),
-              actionButton('next3', ' Next')
+              actionButton("previous3", " Previous"),
+              actionButton("next3", " Next")
       ),
       
       # Frequency plots content
@@ -132,6 +127,7 @@ ui <- dashboardPage(
               fluidRow(box(title = "Frequency Plot", status = "primary", 
                            collapsible = TRUE, width = 12,
                            textOutput("freqDescription"),
+                           br(),
                            plotOutput("freqPlot") %>% shinycssloaders::withSpinner(),
                            uiOutput("selected_words1"),
                            br(),
@@ -147,10 +143,11 @@ ui <- dashboardPage(
                        box(title = "Most Common Bigrams", status = "primary",
                            collapsible = TRUE, width = 5,
                            textOutput("bigram_description"),
+                           br(),
                            tableOutput("bigram_freq") %>% shinycssloaders::withSpinner(),
                            uiOutput("selected_words3"))),
-              actionButton('previous4', ' Previous'),
-              actionButton('next4', ' Next')
+              actionButton("previous4", " Previous"),
+              actionButton("next4", " Next")
       ),
       
       # Sentiment analysis plots content
@@ -161,17 +158,20 @@ ui <- dashboardPage(
               fluidRow(box(title = "Remove Sentiment Words", status = "primary",
                            collapsible = TRUE, width =12,
                            textOutput("removeSentiments"),
+                           br(),
                            textInput("sentimentwords", "Enter words to remove
                                      and separate each of them by a single space."))),
               fluidRow(box(title = "AFINN Sentiments", status = "primary",
                            collapsible = TRUE, width = 12,
                            textOutput("afinnDescription"),
+                           br(),
                            plotOutput("afinn_sentiment") %>% shinycssloaders::withSpinner(),
                            sliderInput("word_score", "Keep word scores with absolute value greater than:", 
                                        min = 0, max = 100, value = 25))),
               fluidRow(box(title = "Bing Sentiments", status = "primary",
                            collapsible = TRUE, width = 12,
                            textOutput("bingDescription"),
+                           br(),
                            plotOutput("bing_sentiment") %>% shinycssloaders::withSpinner(),
                            sliderInput("word_score1", "Keep word scores greater than: ",
                                        min = 0, max = 100, value = 10))),
@@ -189,15 +189,16 @@ ui <- dashboardPage(
               fluidRow(box(title = "Wordcloud Colored by Sentiment", status = "primary",
                            collapsible = TRUE, width = 12,
                            textOutput("sentwcDescription"),
-                           plotOutput("sentiment_wordcloud") %>% shinycssloaders::withSpinner(),
+                           plotOutput("sentiment_wordcloud", width = "100%") %>% shinycssloaders::withSpinner(),
                            sliderInput("num_words2", "Number of words in the cloud:", 
                                        min = 0, max = 100, value = 50))),
               fluidRow(box(title = "Negated Sentiments", status = "primary",
                            collapsible = TRUE, width = 12, 
                            textOutput("negateDescription"),
+                           br(),
                            plotOutput("sentiment_negation") %>% shinycssloaders::withSpinner())),
-              actionButton('previous5', ' Previous'),
-              actionButton('next5', ' Next')
+              actionButton("previous5", " Previous"),
+              actionButton("next5", " Next")
       ),
       
       # Advanced plots content
@@ -222,14 +223,19 @@ ui <- dashboardPage(
                            #   plotOutput("network2") %>% shinycssloaders::withSpinner()
                            #  ),
                            textOutput("countDescription"),
+                           br(),
                            tableOutput("count_table") %>% shinycssloaders::withSpinner(),
                            sliderInput("byLines", "Number of lines:",
                                        min = 0, max = 10, value = 2))),
               fluidRow(box(title = "Correlation Tables", status = "primary",
                            collapsible = TRUE, width = 12,
                            textOutput("corrDescription"),
+                           br(),
                            textInput("corr_words", "I want to see correlations with the word..."),
-                           plotOutput("corr_comparison") %>% shinycssloaders::withSpinner())),
+                           splitLayout(cellWidths = c("25%", "75%"),
+                                       tableOutput("freq_table"),
+                                       plotOutput("corr_comparison") %>% shinycssloaders::withSpinner()
+                           ))),
               # correlation graph not satisfactory yet, still working on it
               #fluidRow(box(title = "Correlation Network Graph", status = "primary", solidHeader = TRUE,
                #            collapsible = TRUE, width = 12,
@@ -237,8 +243,8 @@ ui <- dashboardPage(
                  #          plotOutput("corr_network") %>% shinycssloaders::withSpinner(),
                   #         sliderInput("corr", "Change the minimum correlation:", 
                    #                    min = 0, max = 1, value = 0.2))),
-              actionButton('previous6', ' Previous'),
-              actionButton('next6', ' Next')
+              actionButton("previous6", " Previous"),
+              actionButton("next6", " Next")
       ),
       
       # Multiple Files Tab
@@ -255,9 +261,8 @@ ui <- dashboardPage(
               fluidRow(box(title = "Frequency Plot", status = "primary", solidHeader = TRUE,
                            collapsible = TRUE, width = 12,
                            plotOutput("freqPlotGroup") %>% shinycssloaders::withSpinner(),
-                           sliderInput("freq_count2", "Choose the number of words you'd like to display:", 
-                                       min = 0, max = 25, value = 10)),
-                       tableOutput("testing")),
+                           sliderInput("freq_count2", "Keep words with a score greater than:", 
+                                       min = 0, max = 200, value = 25))),
               actionButton("previous7", "Previous")
               
       )
@@ -735,7 +740,9 @@ server <- function(input, output, session) {
                                        means they appear together a lot and also don’t appear often by themselves. Type in words 
                                        that you’re interested in seeing relationships with. Feel free to enter multiple words by 
                                        separating them by a single space. Correlations range between 0 and 1 with zero being no 
-                                       association and 1 meaning they are always present together and never appear without each other.")
+                                       association and 1 meaning they are always present together and never appear without each other.
+                                       A table of the most frequently used words in your text has been provided - you may want to see
+                                       what other words they are correlated with.")
   output$corr_comparison <- renderPlot ({
     req(input$corr_words)
     
@@ -756,6 +763,13 @@ server <- function(input, output, session) {
             plot.title = element_text(size = 16, face = "bold"), strip.text.x = element_text(size = 12)) 
   })
   
+  output$freq_table <- renderTable ({
+    plotdata() %>%
+      count(word, sort = T) %>%
+      top_n(12) %>%
+      rename("Word" = "word", "Count" = "n")
+  })
+  
   # Unite bigrams to use in frequency table
   united_bigrams <- reactive ({
     united_bigrams <- clean_bigrams() %>%
@@ -769,7 +783,14 @@ server <- function(input, output, session) {
                                           For instance, we might want to look at two word tokens (called bigrams). 
                                           Here are the most common bigrams in the text:")
   output$bigram_freq <- renderTable ({
-    freq_data <- united_bigrams() %>% rename("Bigram" = "bigram", "Count" = "n")
+    
+    word_removal <- unlist(strsplit(input$stopwords, split = " "))
+    `%nin%` = Negate(`%in%`)
+    
+    freq_data <- clean_bigrams() %>%
+      filter(!is.na(word1) & !is.na(word2) & word1 %nin% word_removal & word2 %nin% word_removal) %>%
+      unite(bigram, word1, word2, sep = " ") %>% rename("Bigram" = "bigram", "Count" = "n")
+    
     head(freq_data, 13)
   })
   
@@ -803,40 +824,23 @@ server <- function(input, output, session) {
   
   output$freqPlotGroup <- renderPlot ({
     
-    #req(input$inSelectGroup)
+    req(input$inSelectGroup)
     
-    #plotdata() %>%
-      #group_by(input$inSelectGroup) %>%
-     # count(word) %>%
-      #top_n(input$freq_count2) %>% 
-      #ungroup() %>%
-      #mutate(word = reorder(word, n)) %>%
-      #ggplot(aes(word, n)) + 
-      #geom_bar(stat = "identity", show.legend=FALSE) +
-      #geom_col(fill="purple", show.legend = FALSE) + 
-      #facet_wrap(~input$inSelectGroup, scales = "free_y") + coord_flip() + 
-      #ggtitle("Most Common Words in the Data") + ylab("Count") + xlab("Word") + 
-      #theme(axis.text = element_text(size = 12), axis.title = element_text(size = 14,face = "bold"),
-       #     plot.title = element_text(size = 16, face = "bold"), strip.text.x = element_text(size = 12))
-    
-    facetVar <- data_set()[,input$inSelectGroup]
-    cbind(plotdata(), facetVar) %>%
+    plotdata() %>%
+      mutate(facet = as.factor(plotdata()[,input$inSelectGroup])) %>%
+      group_by(facet) %>%
       count(word) %>%
-      top_n(input$freq_count2) %>%
+      ungroup() %>%
       mutate(word = reorder(word, n)) %>%
-      ggplot(aes(word, n)) + geom_col(fill="purple") + 
-      facet_wrap(~facetVar) +
+      filter(n > input$freq_count2) %>%
+      ggplot(aes(word, n)) + geom_col(fill = "purple", show.legend = FALSE) + 
+      facet_wrap(~facet, scales = "free_y") +
       coord_flip() + ggtitle("Most Common Words in the Data") +
       ylab("Count") + xlab("Word") + theme(axis.text=element_text(size=12),
                                            axis.title=element_text(size=14,face="bold"),
                                            plot.title=element_text(size=16, face="bold"))
   })
-  
-  output$testing <- renderTable ({
-    head(plotdata())
-  })
-  
-  
+
   
   observeEvent(input$next1, {
     updateTabItems(session, "sidebar",
