@@ -269,7 +269,11 @@ ui <- dashboardPage(
                            collapsible = TRUE, width = 12,
                            plotOutput("freqPlotGroup") %>% shinycssloaders::withSpinner(),
                            sliderInput("freq_count2", "Keep words with a score greater than:", 
-                                       min = 0, max = 200, value = 25))),
+                                       min = 0, max = 200, value = 25),
+                           plotOutput("afinn_sentimentGroup") %>% shinycssloaders::withSpinner(),
+                           sliderInput("word_countGroup", "Keep words with a score greater than: ",
+                                       min = 0, max = 200, value = 25),
+                           tableOutput("testing"))),
               actionButton("previous7", "Previous")
               
       )
@@ -846,6 +850,35 @@ server <- function(input, output, session) {
       ylab("Count") + xlab("Word") + theme(axis.text=element_text(size=12),
                                            axis.title=element_text(size=14,face="bold"),
                                            plot.title=element_text(size=16, face="bold"))
+  })
+  
+  output$afinn_sentimentGroup <- renderPlot({
+    
+    req(input$inSelectGroup)
+    
+    s_word_removal <- unlist(strsplit(input$sentimentwords, split = " "))
+    `%nin%` = Negate(`%in%`)
+    
+    plotdata() %>%
+      inner_join(get_sentiments("afinn")) %>%
+      filter(word %nin% s_word_removal) %>%
+      mutate(facet = as.factor(plotdata()[,input$inSelectGroup])) %>%
+      group_by(score, facet) %>% # group by score originally
+      count(word, sort=TRUE) %>%
+      ungroup() %>%
+      mutate(word_score = score*n) %>%
+      filter(abs(word_score) > input$word_countGroup) %>% 
+      mutate(word = reorder(word, word_score)) %>%
+      ggplot(aes(word, n*score, fill=n*score>0)) + geom_col(show.legend = FALSE) + 
+      facet_wrap(~facet, scales = "free_y") +
+      coord_flip() + ggtitle("Words with largest Sentiment Contribution from AFINN Lexicon") +
+      ylab("Word Score") + xlab("Word") + theme(axis.text=element_text(size=12),
+                                                axis.title=element_text(size=14,face="bold"),
+                                                plot.title=element_text(size=14, face="bold"))
+  })
+  
+  output$testing <- renderTable ({
+    head(plotdata(), 10)
   })
 
   
