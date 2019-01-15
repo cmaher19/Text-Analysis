@@ -9,9 +9,8 @@ library(widyr)
 library(igraph)
 library(ggraph)
 library(DT)
-#library(SnowballC)
 library(corpus)
-
+#library(SnowballC)
 
 ui <- dashboardPage(
   dashboardHeader(title="Text Analysis"),
@@ -134,18 +133,16 @@ ui <- dashboardPage(
                            sliderInput("freq_count", "Choose the number of words you'd like to display:", 
                                        min = 0, max = 25, value = 10))),
               fluidRow(box(title = "Wordcloud", status = "primary",
-                           collapsible = TRUE, width = 7,
+                           collapsible = TRUE, width = 12,
                            textOutput("wordcloudDescription"),
-                           plotOutput("simple_wordcloud", width = "100%") %>% shinycssloaders::withSpinner(),
+                           plotOutput("simple_wordcloud") %>% shinycssloaders::withSpinner(),
                            uiOutput("selected_words2"),
                            sliderInput("num_words", "Number of words in the cloud:", 
-                                       min = 0, max = 100, value = 50)),
-                       box(title = "Most Common Bigrams", status = "primary",
-                           collapsible = TRUE, width = 5,
-                           textOutput("bigram_description"),
-                           br(),
-                           tableOutput("bigram_freq") %>% shinycssloaders::withSpinner(),
-                           uiOutput("selected_words3"))),
+                                       min = 0, max = 100, value = 50),
+                           sliderInput("scale1", "Control height of wordcloud:",
+                                       min = 0, max = 10, value = 5),
+                           sliderInput("scale2", "Control width of wordcloud: ",
+                                       min = 0, max = 2, step = 0.1, value = 1))),
               actionButton("previous4", " Previous"),
               actionButton("next4", " Next")
       ),
@@ -173,8 +170,8 @@ ui <- dashboardPage(
                            textOutput("bingDescription"),
                            br(),
                            plotOutput("bing_sentiment") %>% shinycssloaders::withSpinner(),
-                           sliderInput("word_score1", "Keep word scores greater than: ",
-                                       min = 0, max = 100, value = 10))),
+                           sliderInput("word_score1", "How many words would you like to see?",
+                                       min = 0, max = 25, value = 10))),
               fluidRow(box(title = "Sentiment Analysis Broken Down", status = "primary",
                            collapsible = TRUE, width = 12,
                            textOutput("chunkDescription"),
@@ -226,7 +223,17 @@ ui <- dashboardPage(
                            br(),
                            tableOutput("count_table") %>% shinycssloaders::withSpinner(),
                            sliderInput("byLines", "Number of lines:",
-                                       min = 0, max = 10, value = 2))),
+                                       min = 0, max = 10, value = 2),
+                           sliderInput("num_words3", "How many words would you like to see?",
+                                       min = 0, max = 20, value = 10)),
+                       box(title = "Most Common Bigrams", status = "primary",
+                           collapsible = TRUE,
+                           textOutput("bigram_description"),
+                           br(),
+                           tableOutput("bigram_freq") %>% shinycssloaders::withSpinner(),
+                           uiOutput("selected_words3"),
+                           sliderInput("num_words4", "How many words would you like to see?",
+                                       min = 0, max = 20, value = 10))),
               fluidRow(box(title = "Correlation Tables", status = "primary",
                            collapsible = TRUE, width = 12,
                            textOutput("corrDescription"),
@@ -481,7 +488,7 @@ server <- function(input, output, session) {
   output$simple_wordcloud <- renderPlot ({
     plotdata() %>%
       count(word) %>%
-      with(wordcloud::wordcloud(word, n, max.words = input$num_words, scale=c(4, 0.5), 
+      with(wordcloud::wordcloud(word, n, max.words = input$num_words, scale=c(input$scale1, input$scale2), 
                                 colors = RColorBrewer::brewer.pal(3, "Dark2")))
   })
   
@@ -515,7 +522,7 @@ server <- function(input, output, session) {
       count(word, sort=TRUE) %>%
       ungroup() %>%
       mutate(word_score = score*n) %>%
-      filter(abs(word_score) > input$word_score) %>% # will eventually want to make this a user input
+      filter(abs(word_score) > input$word_score) %>% 
       mutate(word = reorder(word, word_score)) %>%
       ggplot(aes(word, n*score, fill=n*score>0)) + geom_col(show.legend = FALSE) + 
       coord_flip() + ggtitle("Words with largest Sentiment Contribution from AFINN Lexicon") +
@@ -540,7 +547,7 @@ server <- function(input, output, session) {
       filter(word %nin% s_word_removal) %>%
       group_by(sentiment) %>%
       count(word, sort=TRUE) %>%
-      filter(n >= input$word_score1) %>%
+      top_n(input$word_score1) %>%
       ungroup() %>%
       mutate(word = reorder(word, n)) %>%
       ggplot(aes(word, n, fill=sentiment)) + geom_col(show.legend = FALSE) + 
@@ -676,7 +683,7 @@ server <- function(input, output, session) {
                                           graph. This gives a sense of words that commonly appear together. ")
   output$network <- renderPlot ({
     bigram_graph <- clean_bigrams() %>%
-      filter(n > input$cooccur, !is.na(word1), !is.na(word2)) %>% # maybe want to make this a user input?
+      filter(n > input$cooccur, !is.na(word1), !is.na(word2)) %>% 
       igraph::graph_from_data_frame()
     
     
@@ -707,7 +714,7 @@ server <- function(input, output, session) {
   data_sections <- reactive ({
     token <- new_data()[,input$inSelect]
     sections <- cbind(new_data(), token) %>%
-      mutate(section = row_number() %/% input$byLines, text = as.character(token)) %>% # by two lines - add option here
+      mutate(section = row_number() %/% input$byLines, text = as.character(token)) %>%
       filter(section > 0) %>%
       unnest_tokens(word, text) %>%
       filter(!word %in% stop_words$word)
@@ -724,13 +731,13 @@ server <- function(input, output, session) {
     word_pairs <- word_pairs[toDelete,] %>%
       rename("First Word" = "item1", "Second Word" = "item2", "Count" = "n")
     
-    head(word_pairs, 10)
+    head(word_pairs, input$num_words3)
   })
   
   word_cors <- reactive ({
     data_sections() %>%
       group_by(word) %>%
-      filter(n() >= 10) %>% # will eventually want to make this value a user input
+      filter(n() >= 10) %>% 
       pairwise_cor(word, section, sort = TRUE)
   })
   
@@ -791,15 +798,15 @@ server <- function(input, output, session) {
       filter(!is.na(word1) & !is.na(word2) & word1 %nin% word_removal & word2 %nin% word_removal) %>%
       unite(bigram, word1, word2, sep = " ") %>% rename("Bigram" = "bigram", "Count" = "n")
     
-    head(freq_data, 13)
+    head(freq_data, input$num_words4)
   })
   
   # Correlation Network
   output$corrnetworkDescription <- renderText("This network graph shows words that are strongly correlated with one another. A darker line between the two words 
                                               signifies a strong correlation. The label between the two words is their correlation (on a scale from 0 to 1).")
-  output$corr_network <- renderPlot ({ # spatially doesn't look great right now
+  output$corr_network <- renderPlot ({ 
     word_cors() %>%
-      filter(correlation > input$corr) %>% # make this changeable by user input
+      filter(correlation > input$corr) %>% 
       graph_from_data_frame() %>%
       ggraph(layout = "fr") + geom_edge_link(aes(edge_alpha = correlation, 
                                                  label = round(correlation, 2)), show.legend = FALSE) + 
