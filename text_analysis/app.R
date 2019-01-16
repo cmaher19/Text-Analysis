@@ -232,7 +232,8 @@ ui <- dashboardPage(
                            br(),
                            tableOutput("bigram_freq") %>% shinycssloaders::withSpinner(),
                            uiOutput("selected_words3"),
-                           sliderInput("num_words4", "How many words would you like to see?",
+                           br(),
+                           sliderInput("num_words4", "How many bigrams would you like to see?",
                                        min = 0, max = 20, value = 10))),
               fluidRow(box(title = "Correlation Tables", status = "primary",
                            collapsible = TRUE, width = 12,
@@ -269,11 +270,17 @@ ui <- dashboardPage(
                            collapsible = TRUE, width = 12,
                            plotOutput("freqPlotGroup") %>% shinycssloaders::withSpinner(),
                            sliderInput("freq_count2", "Keep words with a score greater than:", 
-                                       min = 0, max = 200, value = 25),
+                                       min = 0, max = 200, value = 50))),
+              fluidRow(box(title = "AFINN Sentiments", status = "primary", solidHeader = TRUE,
+                           collapsible = TRUE, width = 12,
                            plotOutput("afinn_sentimentGroup") %>% shinycssloaders::withSpinner(),
                            sliderInput("word_countGroup", "Keep words with a score greater than: ",
-                                       min = 0, max = 200, value = 25),
-                           tableOutput("testing"))),
+                                       min = 0, max = 200, value = 25))),
+              fluidRow(box(title = "Bing Sentiments", status = "primary", solidHeader = TRUE,
+                           collapsible = TRUE, width = 12,
+                           plotOutput("bing_sentimentGroup") %>% shinycssloaders::withSpinner(),
+                           sliderInput("word_countGroup2", "Keep words with a score greater than: ",
+                                       min = 0, max = 200, value = 25))),
               actionButton("previous7", "Previous")
               
       )
@@ -840,10 +847,10 @@ server <- function(input, output, session) {
     plotdata() %>%
       mutate(facet = as.factor(plotdata()[,input$inSelectGroup])) %>%
       group_by(facet) %>%
-      count(word) %>%
+      count(word, sort = TRUE) %>%
       ungroup() %>%
       mutate(word = reorder(word, n)) %>%
-      filter(n > input$freq_count2) %>%
+      top_n(n = input$freq_count2, word) %>%
       ggplot(aes(word, n)) + geom_col(fill = "purple", show.legend = FALSE) + 
       facet_wrap(~facet, scales = "free_y") +
       coord_flip() + ggtitle("Most Common Words in the Data") +
@@ -860,25 +867,44 @@ server <- function(input, output, session) {
     `%nin%` = Negate(`%in%`)
     
     plotdata() %>%
+      mutate(facet = as.factor(plotdata()[,input$inSelectGroup])) %>%
       inner_join(get_sentiments("afinn")) %>%
       filter(word %nin% s_word_removal) %>%
-      mutate(facet = as.factor(plotdata()[,input$inSelectGroup])) %>%
-      group_by(score, facet) %>% # group by score originally
+      group_by(facet, score) %>%
       count(word, sort=TRUE) %>%
       ungroup() %>%
       mutate(word_score = score*n) %>%
       filter(abs(word_score) > input$word_countGroup) %>% 
       mutate(word = reorder(word, word_score)) %>%
-      ggplot(aes(word, n*score, fill=n*score>0)) + geom_col(show.legend = FALSE) + 
+      ggplot(aes(word, n*score, fill = n*score>0)) + geom_col(show.legend = FALSE) +
       facet_wrap(~facet, scales = "free_y") +
       coord_flip() + ggtitle("Words with largest Sentiment Contribution from AFINN Lexicon") +
       ylab("Word Score") + xlab("Word") + theme(axis.text=element_text(size=12),
                                                 axis.title=element_text(size=14,face="bold"),
                                                 plot.title=element_text(size=14, face="bold"))
+    
   })
   
-  output$testing <- renderTable ({
-    head(plotdata(), 10)
+  output$bing_sentimentGroup <- renderPlot ({
+    s_word_removal <- unlist(strsplit(input$sentimentwords, split = " "))
+    `%nin%` = Negate(`%in%`)
+    
+    plotdata() %>%
+      mutate(facet = as.factor(plotdata()[,input$inSelectGroup])) %>%
+      inner_join(get_sentiments("bing")) %>%
+      filter(word %nin% s_word_removal) %>%
+      group_by(facet, sentiment) %>%
+      count(word, sort=TRUE) %>%
+      ungroup() %>%
+      #filter(n > input$word_countGroup2) %>%
+      mutate(word = reorder(word, n)) %>%
+      top_n(n = input$word_countGroup2, word) %>%
+      ggplot(aes(word, n, fill = sentiment)) + geom_col(show.legend = FALSE) + 
+      facet_wrap(sentiment ~ facet, scales = "free_y") + coord_flip() + 
+      ggtitle('Most Common Sentiments with Bing Lexicon') + ylab("Count") + xlab("Word") +
+      theme(axis.text = element_text(size = 12), axis.title = element_text(size = 14,face = "bold"),
+            plot.title = element_text(size = 16, face = "bold"), 
+            strip.text.x = element_text(size = 12, face = "bold"))
   })
 
   
