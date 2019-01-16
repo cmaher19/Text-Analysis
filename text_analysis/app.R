@@ -269,8 +269,8 @@ ui <- dashboardPage(
               fluidRow(box(title = "Frequency Plot", status = "primary", solidHeader = TRUE,
                            collapsible = TRUE, width = 12,
                            plotOutput("freqPlotGroup") %>% shinycssloaders::withSpinner(),
-                           sliderInput("freq_count2", "Keep words with a score greater than:", 
-                                       min = 0, max = 200, value = 50))),
+                           sliderInput("freq_count2", "How many words would you like to see?:", 
+                                       min = 0, max = 25, value = 10))),
               fluidRow(box(title = "AFINN Sentiments", status = "primary", solidHeader = TRUE,
                            collapsible = TRUE, width = 12,
                            plotOutput("afinn_sentimentGroup") %>% shinycssloaders::withSpinner(),
@@ -281,6 +281,11 @@ ui <- dashboardPage(
                            plotOutput("bing_sentimentGroup") %>% shinycssloaders::withSpinner(),
                            sliderInput("word_countGroup2", "Keep words with a score greater than: ",
                                        min = 0, max = 200, value = 25))),
+              fluidRow(box(title = "TF-IDF", status = "primary", solidHeader = TRUE,
+                           collapsible = TRUE, width = 12,
+                           plotOutput("tfidf") %>% shinycssloaders::withSpinner(),
+                           sliderInput("num_tfidf", "How many words would you like to see?",
+                                       min = 0, max = 25, value = 10))),
               actionButton("previous7", "Previous")
               
       )
@@ -902,6 +907,57 @@ server <- function(input, output, session) {
       ggplot(aes(word, n, fill = sentiment)) + geom_col(show.legend = FALSE) + 
       facet_wrap(sentiment ~ facet, scales = "free_y") + coord_flip() + 
       ggtitle('Most Common Sentiments with Bing Lexicon') + ylab("Count") + xlab("Word") +
+      theme(axis.text = element_text(size = 12), axis.title = element_text(size = 14,face = "bold"),
+            plot.title = element_text(size = 16, face = "bold"), 
+            strip.text.x = element_text(size = 12, face = "bold"))
+  })
+  
+  
+  tfidf_data <- reactive ({
+
+    
+   token <- new_data()[,input$inSelect]
+    
+    word_removal <- unlist(strsplit(input$stopwords, split = " "))
+    `%nin%` = Negate(`%in%`)
+    
+    # Filter data based on whether or not there are stop words
+    if(input$remove_stopwords == TRUE) {
+      data_set <- cbind(new_data(), token) %>%
+        mutate(text = as.character(token), linenumber=row_number(),
+               facet = as.factor(new_data()[,input$inSelectGroup])) %>%
+        unnest_tokens(word, text) %>%
+        filter(word %nin% word_removal) %>%
+        anti_join(stop_words) %>%
+        count(facet, word, sort = T) %>%
+        ungroup()
+    } else {
+      data_set <- cbind(new_data(), token) %>%
+        mutate(text = as.character(token), linenumber=row_number(),
+               facet = as.factor(new_data()[,input$inSelectGroup])) %>%
+        unnest_tokens(word, text) %>%
+        filter(word %nin% word_removal) %>%
+        count(facet, word, sort = T)
+    }
+  })
+  
+  final_data <- reactive ({
+    total_words <- tfidf_data() %>%
+      group_by(facet) %>%
+      summarize(total = sum(n))
+    
+    final_data <- left_join(tfidf_data(), total_words) %>%
+      bind_tf_idf(word, facet, n)
+    
+  })
+  
+  output$tfidf <- renderPlot ({
+    final_data() %>%
+      arrange(desc(tf_idf)) %>%
+      mutate(word = factor(word, levels = rev(unique(word)))) %>% 
+      top_n(input$num_tfidf) %>%
+      ggplot(aes(word, tf_idf, fill = facet)) + geom_col(show.legend = FALSE) +
+      labs(x = NULL, y = "tf-idf") + facet_wrap(~facet, scales = "free") + coord_flip() +
       theme(axis.text = element_text(size = 12), axis.title = element_text(size = 14,face = "bold"),
             plot.title = element_text(size = 16, face = "bold"), 
             strip.text.x = element_text(size = 12, face = "bold"))
