@@ -10,6 +10,7 @@ library(igraph)
 library(ggraph)
 library(DT)
 library(corpus)
+library(topicmodels)
 #library(SnowballC)
 
 ui <- dashboardPage(
@@ -286,6 +287,11 @@ ui <- dashboardPage(
                            plotOutput("tfidf") %>% shinycssloaders::withSpinner(),
                            sliderInput("num_tfidf", "How many words would you like to see?",
                                        min = 0, max = 25, value = 10))),
+              fluidRow(box(title = "Topic Models", status = "primary", solidHeader = TRUE,
+                           collapsible = TRUE, width = 12,
+                           plotOutput("topicModel") %>% shinycssloaders::withSpinner(),
+                           sliderInput("num_topics", "How many topics would you like?",
+                                       min = 1, max = 10, value = 4))),
               actionButton("previous7", "Previous")
               
       )
@@ -962,6 +968,67 @@ server <- function(input, output, session) {
             plot.title = element_text(size = 16, face = "bold"), 
             strip.text.x = element_text(size = 12, face = "bold"))
   })
+  
+  by_chapter <- reactive ({
+    token <- new_data()[,input$inSelect]
+    
+    # Filter data based on whether or not there are stop words
+    if(input$remove_stopwords == TRUE) {
+      data_set <- cbind(new_data(), token) %>%
+        mutate(text = as.character(token), linenumber=row_number(),
+               facet = as.factor(new_data()[,input$inSelectGroup])) %>%
+        group_by(facet) %>%
+        mutate(chapter = cumsum(str_detect(text, regex("^chapter ", ignore_case = TRUE)))) %>%
+        ungroup() %>%
+        filter(chapter > 0)
+    } else {
+      data_set <- cbind(new_data(), token) %>%
+        mutate(text = as.character(token), linenumber=row_number(),
+               facet = as.factor(new_data()[,input$inSelectGroup])) %>%
+        group_by(facet) %>%
+        mutate(chapter = cumsum(str_detect(text, regex("^chapter ", ignore_case = TRUE)))) %>%
+        ungroup() %>%
+        filter(chapter > 0)
+    }
+    
+    })
+  
+  word_counts <- reactive ({
+    
+    word_removal <- unlist(strsplit(input$stopwords, split = " "))
+    `%nin%` = Negate(`%in%`)
+    
+    by_chapter() %>%
+      unite(title_chapter, facet, chapter) %>%
+      unnest_tokens(word, text) %>%
+      filter(word %nin% word_removal) %>%
+      anti_join(stop_words) %>%
+      count(title_chapter, word, sort = TRUE)
+  })
+  
+  output$topicModel <- renderPlot ({
+    chapters_dtm <- word_counts() %>%
+    cast_dtm(title_chapter, word, n)
+    
+    chapters_lda <- LDA(chapters_dtm, k = input$num_topics, control = list(seed = 1234)) # add user input for number of topics
+    
+    chapters_lda_td <- tidy(chapters_lda)
+    
+    top_terms <- chapters_lda_td %>%
+      group_by(topic) %>%
+      top_n(5, beta) %>%
+      ungroup() %>%
+      arrange(topic, -beta)
+    
+    top_terms %>%
+      mutate(term = reorder(term, beta)) %>%
+      ggplot(aes(term, beta, fill = topic)) +
+      geom_bar(stat = "identity", show.legend = FALSE) +
+      facet_wrap(~ topic, scales = "free") +
+      theme(axis.text.x = element_text(size = 15, angle = 90, hjust = 1))
+  })
+  
+  
 
   
   observeEvent(input$next1, {
