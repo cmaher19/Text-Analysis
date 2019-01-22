@@ -1,5 +1,6 @@
 # Text Analysis Shiny application
 
+# Load essential libraries
 library(shiny)
 library(shinydashboard)
 library(shinythemes)
@@ -29,7 +30,8 @@ ui <- dashboardPage(
   
   dashboardBody(
     tabItems(
-      # Introduction content
+      
+      # Tab 1: Introduction
       tabItem(tabName = "introduction", 
               fluidRow(box(title = "Introduction", status = "primary", 
                            collapsible = TRUE, width = 12,
@@ -44,7 +46,7 @@ ui <- dashboardPage(
               
       ),
       
-      # Data upload content
+      # Tab 2: Data Upload
       tabItem(tabName = "data_upload",
               fluidRow(box(title="Choose a CSV/Text File", status = "primary", 
                            collapsible = TRUE, width = 12,
@@ -100,6 +102,7 @@ ui <- dashboardPage(
               actionButton("next2", " Next")
       ),
       
+      # Tab 3: Data Wrangling
       tabItem(tabName = "to_know",
               fluidRow(box(title = "Token Variable", status = "primary", 
                            collapsible = TRUE, width = 12,
@@ -119,7 +122,7 @@ ui <- dashboardPage(
               actionButton("next3", " Next")
       ),
       
-      # Frequency plots content
+      # Tab 4: Frequency Plots
       tabItem(tabName = "freq_plots", 
               fluidRow(box(title = "What can frequency plots tell us about the text?", status = "primary",
                            collapsible = TRUE, width = 12, 
@@ -148,7 +151,7 @@ ui <- dashboardPage(
               actionButton("next4", " Next")
       ),
       
-      # Sentiment analysis plots content
+      # Tab 5: Sentiment Analysis
       tabItem(tabName = "sentiment_plots",
               fluidRow(box(title = "Overview", status = "primary",
                            collapsible = TRUE, width = 12,
@@ -199,7 +202,7 @@ ui <- dashboardPage(
               actionButton("next5", " Next")
       ),
       
-      # Advanced plots content
+      # Tab 6: Visualizing Relationships
       tabItem(tabName = "relationship_plots",
               fluidRow(box(title = "Section Overview", status = "primary",
                            collapsible = TRUE, width = 12,
@@ -213,13 +216,11 @@ ui <- dashboardPage(
                            sliderInput("cooccur", "Change the minimum number of co-occurrences:", 
                                        min = 0, max = 200, value = 5))),
               # might switch to this type of network graph later on, so keeping code here
-              #box(title = "Network 2", status = "primary", solidHeader = TRUE,
+              #fluidRow(box(title = "Network 2", status = "primary", solidHeader = TRUE,
               #   collapsible = TRUE, plotOutput("network2") %>% shinycssloaders::withSpinner()
-              #  ),
+              #  )),
               fluidRow(box(title = "Co-occurrence Count", status = "primary",
                            collapsible = TRUE,
-                           #   plotOutput("network2") %>% shinycssloaders::withSpinner()
-                           #  ),
                            textOutput("countDescription"),
                            br(),
                            tableOutput("count_table") %>% shinycssloaders::withSpinner(),
@@ -245,7 +246,7 @@ ui <- dashboardPage(
                                        tableOutput("freq_table"),
                                        plotOutput("corr_comparison") %>% shinycssloaders::withSpinner()
                            ))),
-              # correlation graph not satisfactory yet, still working on it
+              # Correlation graph not satisfactory yet, still working on it
               #fluidRow(box(title = "Correlation Network Graph", status = "primary", solidHeader = TRUE,
                #            collapsible = TRUE, width = 12,
                 #           textOutput("corrnetworkDescription"),
@@ -256,9 +257,8 @@ ui <- dashboardPage(
               actionButton("next6", " Next")
       ),
       
-      # Multiple Files Tab
+      # Tab 7: Multiple Files
       tabItem(tabName = "multipleFiles",
-              br(),
               fluidRow(box(title = "Choose a faceting variable", status = "primary", solidHeader = TRUE,
                            collapsible = TRUE,
                            textOutput("facetVar"),
@@ -292,56 +292,59 @@ ui <- dashboardPage(
                            sliderInput("num_topics", "How many topics would you like?",
                                        min = 1, max = 10, value = 4))),
               actionButton("previous7", "Previous")
-              
+              )
       )
-)
+    )
   )
-)
-
 
 server <- function(input, output, session) {
+  
+  # TAB 1 CONTENT: INTRODUCTION
+  
   output$intro1 <- renderText("On a broad level, text analysis is the process of extracting information from 
                               complex text data. Text data can be anything from a speech to your favorite 
                               novel to a poet’s entire set of work. This module seeks to give the user (you!) 
                               an introduction to the basics of text analytics. We will uncover the most 
                               frequently used words, words with strong emotional connotations, and 
                               meaningful relationships between words in your text.")
+  
   output$intro2 <- renderText("This module is meant to serve as an introduction to the world of text analysis. 
                               We want to give you exposure to something they might not otherwise see. Text 
                               analytics can be intimidating and we want to make this introduction accessible 
                               to anyone who is interested.")
+  
   output$intro3 <- renderText("We hope this module will be useful to undergraduate students enrolled in introductory 
                               English and Linguistics as well as students interested in Statistics and Data Science.")
   
   
   
+  # TAB 2 CONTENT: DATA UPLOAD
+  
   output$dataIntro <- renderText("First off, we need to choose a file that contains the text data that we want to analyze.
                                  We can use .csv and .txt files in the module. Please select a file from
                                  your computer that meets these requirements and then we can get started!")
+  
   output$data1 <- renderText("Have a look at the extension of the file you chose - is it .csv or .txt? Knowing this will help
                              the program process your data.")
+  
   output$data2 <- renderText("We can compare text across different pieces of text. If you have multiple files that 
                              you’d like to compare, please upload them above and check this box.")
+  
   output$data3 <- renderText("Have a look at your file - are the names of the variables in the first line or 
                              does the text start right away?")
 
   
-  data_set <- reactive({
-    # got this code from this website:
+  data_set <- reactive ({
+    # Got this code from this website:
     # https://itsalocke.com/blog/r-quick-tip-upload-multiple-files-in-shiny-and-consolidate-into-a-dataset/
     
     if(input$choice == "built_in") {
       data_set <- read.csv("peterpan.csv", header = T)
-    }
-    
-    else {
+    } else {
       if(input$file_type == "csv") {
         data_set <- as.data.frame(data.table::rbindlist(lapply(input$file1$datapath, data.table::fread),
                                                         use.names = TRUE, fill = TRUE))
       } else {
-        #data_set <- read.delim(input$file1$datapath, header = F)
-      
-        
         # Code that might work to read in multiple text files
         tbl_list <- lapply(input$file1$datapath, read.delim, header = FALSE) 
         data_set <- as.data.frame(data.table::rbindlist(tbl_list, idcol = TRUE, use.names = TRUE, fill = TRUE))
@@ -350,10 +353,11 @@ server <- function(input, output, session) {
   })
   
   
-  observeEvent(
-    input$submit, {
+  observeEvent (input$submit, {
       output$rawData <- renderText("Have a look at the data. Does it appear how you expected? Feel free to use the 'search' function to
                                    locate certain words or phrases within the document.")
+      
+      # Output: Raw Data
       output$contents <- renderDataTable({
         if(input$disp == "head") {
           datatable(head(data_set()), options = list(paging = FALSE, scrollY = "300px"))
@@ -362,18 +366,19 @@ server <- function(input, output, session) {
           datatable(data_set(), options = list(paging = FALSE, scrollY = "300px"))
         }
       })
-    } 
-  )
+      }
+      )
   
   output$dataCleaning <- renderText("Sometimes there is part of the data that we don’t want to include in our analysis.
                                     For instance, you might want to remove the table of contents or copyright information at the beginning of a book. 
                                     After looking at the raw data, are there any lines that you would like to remove? If so, enter their line 
                                     numbers here.")
   
-  new_data <- reactive(
-    {
+  new_data <- reactive ({
+    
       output$dataUpdate <- renderText("Check out the modified data. If you removed some data, does it look better now? 
                                       If not, feel free to change which lines you removed up above.")
+      
       if(input$line_removal == "yes" && input$file_type == "csv") {
         data_set()[-c(input$start_line:input$end_line), ]
       }
@@ -383,24 +388,31 @@ server <- function(input, output, session) {
       } else {
         data_set()
       }
-    }
-  )
-
-  output$result <- renderDataTable({
+      
+    })
+  
+  # Output: Modified Data
+  output$result <- renderDataTable ({
+    
     if(input$disp1 == "head") {
       datatable(head(new_data()), options = list(paging = FALSE, scrollY = "300px"))
     }
     else {
       datatable(new_data(), options = list(paging = FALSE, scrollY = "300px"))
     }
-  })
+    
+    })
   
   output$questions1 <- renderText("Before moving on, you might want to think about the following questions:")
+  
   output$questions2 <- renderUI(tags$ul(
     tags$li("Where did my data come from?"),
     tags$li("What variables are in it (if any)?"),
     tags$li("Are there any issues with the data that I know of?")
-  ))
+    ))
+  
+  
+  # TAB 3 CONTENT: DATA WRANGLING
   
   observe({
     updateSelectInput(session, "inSelect",
@@ -425,7 +437,11 @@ server <- function(input, output, session) {
                                  want to have included in the analysis, please enter them here. If you'd like to remove
                                  multiple words, simply separate each one by a single white space.")
   
+  
+  # TAB 4 CONTENT: FREQUENCY PLOTS
+  
   plotdata <- reactive ({
+    
     token <- new_data()[,input$inSelect]
     
     word_removal <- unlist(strsplit(input$stopwords, split = " "))
@@ -443,6 +459,7 @@ server <- function(input, output, session) {
         #text_tokens(text, stemmer = "en") %>%
         filter(word %nin% word_removal) %>%
         anti_join(stop_words)
+      
     } else {
       data_set <- cbind(new_data(), token) %>%
         mutate(text = as.character(token), linenumber=row_number(),
@@ -459,11 +476,13 @@ server <- function(input, output, session) {
   
   # List of removed words
   output$selected_words1 <- renderUI({
+    
     if(is.null(input$stopwords)) {
       strong(paste("You didn't remove any additional stop words.", input$stopwords))
     } else {
       strong(paste("Remember you removed the following words:", input$stopwords))
     }
+    
   })
   
   output$selected_words2 <- renderUI({
@@ -474,10 +493,10 @@ server <- function(input, output, session) {
     strong(paste("Remember you removed the following words:", input$stopwords))
   })
   
-  # Frequency plot
   output$freqMeaning <- renderText("Both of these plots give us a sense of the most commonly used words in the text. 
                                    These can be helpful in determining the overall topic and what might be most important 
                                    in the text. Consider some or all of the following questions as you look at each graph:")
+  
   output$questions3 <- renderUI(tags$ul(
     tags$li("What are the title and axis labels? What is the scale of each axis?"),
     tags$li("Were there user inputs for this plot?"),
@@ -490,6 +509,7 @@ server <- function(input, output, session) {
   
   output$freqDescription <- renderText("This plots displays the words that occur the most in your text. 
                                        Feel free to adjust slider to show words that occur more/less.")
+  # Output: Frequency Plot
   output$freqPlot <- renderPlot({
     plotdata() %>%
       count(word) %>%
@@ -501,12 +521,12 @@ server <- function(input, output, session) {
                                            plot.title=element_text(size=16, face="bold"))
   })
   
-  
   # Wordcloud for frequency of words (basically also just a frequency plot)
   output$wordcloudDescription <- renderText("This word cloud also shows the most common words. The larger the 
                                             word appears in the cloud, the more times it occurs in the text. 
                                             You can adjust how many words appear in the cloud with the slider below.")
   
+  # Output: Wordcloud
   output$simple_wordcloud <- renderPlot ({
     plotdata() %>%
       count(word) %>%
@@ -514,24 +534,28 @@ server <- function(input, output, session) {
                                 colors = RColorBrewer::brewer.pal(3, "Dark2")))
   })
   
-  # SENTIMENT ANALYSIS SECTION
+  
+  # TAB 5 CONTENT: SENTIMENT ANALYSIS
+  
   output$sentimentOverview <- renderText("In this section we will attempt to identify the words that contribute most to the 
                                          sentiment of this piece of text. We do this by attaching sentiment lexicons, which 
                                          are groups of words that have identified specific words and associated them with an 
                                          emotion. For example, this could be used to trace the plot of a book such as Peter 
                                          Pan or to identify the overall sentiment of a movie review.")
+  
   output$removeSentiments <- renderText("Are there any words you'd like to manually remove from the text for sentiment analysis? 
                                         For instance, 'darling' has a positive sentiment but is also the family name in Peter 
                                         Pan, so we would want to remove it. Please enter your words here and separate them by 
                                         a single space. Note: you may want to revisit this step after having a look at the 
                                         sentiment analysis plots.")
   
-  # AFINN Sentiment Graph
+  # Output: AFINN Sentiment Graph
   output$afinnDescription <- renderText("This graph uses the AFINN sentiment lexicon that scores words on a scale from -5 to 5, 
                                         with -5 being most negative and 5 being most positive. That score is multiplied by the 
                                         number of times the word occurred and the overall word score is plotted on this graph. 
                                         Feel free to alter the minimum word score of words that appear on the graph by adjusting 
                                         the slider.")
+  
   output$afinn_sentiment <- renderPlot({
     
     s_word_removal <- unlist(strsplit(input$sentimentwords, split = " "))
@@ -553,11 +577,12 @@ server <- function(input, output, session) {
                                                 plot.title=element_text(size=14, face="bold"))
   })
   
-  # Bing sentiment graph
+  # Output: Bing sentiment graph
   output$bingDescription <- renderText("The Bing sentiment lexicon categorizes words as either positive or negative. 
                                        This graph shows the “most positive” and “most negative” words according to this 
                                        specific lexicon. This is simply another way to do a simple sentiment analysis on 
                                        a chunk of text.")
+  
   output$bing_sentiment <- renderPlot ({
     req(input$inSelect)
     
@@ -586,6 +611,7 @@ server <- function(input, output, session) {
                                         begin explicitly with “Chapter”). When it shows blue bar above the middle line, that means that chunk 
                                         of text had more positively scored words than negatively scored words. In this sense, you can 
                                         track how the plot of a book changes by chapter.")
+  
   output$byindex <- renderPlot ({
     s_word_removal <- unlist(strsplit(input$sentimentwords, split = " "))
     `%nin%` = Negate(`%in%`)
@@ -619,6 +645,7 @@ server <- function(input, output, session) {
   output$sentwcDescription <- renderText("This plot uses the positive and negative word categorizations from the Bing 
                                          sentiment lexicon. It shows the most positive words appear in large green 
                                          lettering and the most negative words appear in fuschia.")
+  
   output$sentiment_wordcloud <- renderPlot ({
     req(input$inSelect)
     
@@ -691,7 +718,9 @@ server <- function(input, output, session) {
             plot.title = element_text(size = 16, face = "bold"))
   })
   
-  # ADVANCED PLOTS
+  
+  # TAB 6 CONTENT: VISUALIZING RELATIONSHIPS
+  
   output$advancedOverview <- renderText("Co-occurrence and correlation are two ways that we can begin to study the relationships between words in a document.
                                         Correlation and co-occurrence show similar ideas -- they both contain information about 
                                         how often words occur together. Correlation is slightly more nuanced than co-occurrence in 
@@ -703,6 +732,7 @@ server <- function(input, output, session) {
                                           between them, the more times they co-occur. The arrow shows which order the words usually 
                                           occur. You can change the number of co-occurrences required for the pair to appear on the 
                                           graph. This gives a sense of words that commonly appear together. ")
+  
   output$network <- renderPlot ({
     bigram_graph <- clean_bigrams() %>%
       filter(n > input$cooccur, !is.na(word1), !is.na(word2)) %>% 
@@ -714,12 +744,12 @@ server <- function(input, output, session) {
                              start_cap = ggraph::circle(3, "mm"), end_cap = ggraph::circle(3, "mm")) + 
       ggraph::geom_node_point(color = "plum", size = 3) + 
       ggraph::geom_node_text(aes(label = name), hjust = 1.1, vjust = 1.1, size = 5) + 
-      scale_edge_width(range = c(2,6)) + #scale_edge_colour_manual(color = "seagreen2") +
-      theme_void()
+      scale_edge_width(range = c(2,6)) + theme_void()
   })
   
-  # Not outputting this currently
+  # Not outputting this currently - different network graph
   output$network2 <- visNetwork::renderVisNetwork ({
+    
     g1 <- clean_bigrams() %>% 
       filter(!is.na(word1)) %>% filter(!is.na(word2)) %>% filter(n > 3) %>% 
       graph_from_data_frame(directed = T)
@@ -730,8 +760,8 @@ server <- function(input, output, session) {
       visOptions(highlightNearest = TRUE, 
                  nodesIdSelection = TRUE) %>%
       visInteraction(keyboard = TRUE)
+    
   })
-  
   
   data_sections <- reactive ({
     token <- new_data()[,input$inSelect]
@@ -742,9 +772,10 @@ server <- function(input, output, session) {
       filter(!word %in% stop_words$word)
   })
   
-  # top 10 word co-occurrences (taken for words that appear within the same two lines)
+  # Top 10 word co-occurrences (taken for words that appear within the same two lines)
   output$countDescription <- renderText("This plots shows the words that occur most commonly together. By default, it counts
                                         words that are within two lines of each other.")
+  
   output$count_table <- renderTable ({
     word_pairs <- data_sections() %>%
       pairwise_count(word, section, sort = TRUE)
@@ -772,7 +803,10 @@ server <- function(input, output, session) {
                                        association and 1 meaning they are always present together and never appear without each other.
                                        A table of the most frequently used words in your text has been provided - you may want to see
                                        what other words they are correlated with.")
+  
+  # User input correlation plots
   output$corr_comparison <- renderPlot ({
+    
     req(input$corr_words)
     
     correlation_words <- unlist(strsplit(input$corr_words, split = " "))
@@ -811,6 +845,7 @@ server <- function(input, output, session) {
                                           are the main focus of this project, there are benefits to looking at multiple words at a time.
                                           For instance, we might want to look at two word tokens (called bigrams). 
                                           Here are the most common bigrams in the text:")
+  
   output$bigram_freq <- renderTable ({
     
     word_removal <- unlist(strsplit(input$stopwords, split = " "))
@@ -824,8 +859,10 @@ server <- function(input, output, session) {
   })
   
   # Correlation Network
-  output$corrnetworkDescription <- renderText("This network graph shows words that are strongly correlated with one another. A darker line between the two words 
-                                              signifies a strong correlation. The label between the two words is their correlation (on a scale from 0 to 1).")
+  output$corrnetworkDescription <- renderText("This network graph shows words that are strongly correlated with one another. 
+                                              A darker line between the two words signifies a strong correlation. The label 
+                                              between the two words is their correlation (on a scale from 0 to 1).")
+  
   output$corr_network <- renderPlot ({ 
     word_cors() %>%
       filter(correlation > input$corr) %>% 
@@ -836,11 +873,14 @@ server <- function(input, output, session) {
       scale_edge_width(range = c(2,6))
   })
   
-  output$facetVar <- renderText("If you input multiple files, you may be wanting to look at graphs for each file, not just all of the files grouped together. In order
-                                to create these graphs, we need to identify which variable holds the information that differentiates files from one another. This
-                                will be some sort of ID variable.")
   
-  observe({
+  # TAB 7 CONTENT: MULTIPLE FILES
+  
+  output$facetVar <- renderText("If you input multiple files, you may be wanting to look at graphs for each file, not just all of the 
+                                files grouped together. In order to create these graphs, we need to identify which variable holds the 
+                                information that differentiates files from one another. This will be some sort of ID variable.")
+  
+  observe ({
     updateSelectInput(session, "inSelectGroup",
                       label = "Choose a facet variable:",
                       choices = names(data_set()))
@@ -865,7 +905,7 @@ server <- function(input, output, session) {
                                            plot.title=element_text(size=16, face="bold"))
   })
   
-  output$afinn_sentimentGroup <- renderPlot({
+  output$afinn_sentimentGroup <- renderPlot ({
     
     req(input$inSelectGroup)
     
@@ -881,7 +921,6 @@ server <- function(input, output, session) {
       ungroup() %>%
       mutate(word_score = score*n) %>%
       top_n(input$word_countGroup, abs(word_score)) %>%
-      #filter(abs(word_score) > input$word_countGroup) %>% 
       mutate(word = reorder(word, word_score)) %>%
       ggplot(aes(word, n*score, fill = n*score>0)) + geom_col(show.legend = FALSE) +
       facet_wrap(~facet, scales = "free_y") +
@@ -893,6 +932,7 @@ server <- function(input, output, session) {
   })
   
   output$bing_sentimentGroup <- renderPlot ({
+    
     s_word_removal <- unlist(strsplit(input$sentimentwords, split = " "))
     `%nin%` = Negate(`%in%`)
     
@@ -913,13 +953,13 @@ server <- function(input, output, session) {
             strip.text.x = element_text(size = 12, face = "bold"))
   })
   
-  
+  # Prepare data for tf-idf processing
   tfidf_data <- reactive ({
     
    token <- new_data()[,input$inSelect]
-    
-    word_removal <- unlist(strsplit(input$stopwords, split = " "))
-    `%nin%` = Negate(`%in%`)
+   
+   word_removal <- unlist(strsplit(input$stopwords, split = " "))
+   `%nin%` = Negate(`%in%`)
     
     # Filter data based on whether or not there are stop words
     if(input$remove_stopwords == TRUE) {
@@ -951,6 +991,7 @@ server <- function(input, output, session) {
     
   })
   
+  # Tf-idf plot
   output$tfidf <- renderPlot ({
     final_data() %>%
       arrange(desc(tf_idf)) %>%
@@ -963,7 +1004,9 @@ server <- function(input, output, session) {
             strip.text.x = element_text(size = 12, face = "bold"))
   })
   
+  # Prepare data for topic model processing
   word_counts <- reactive ({
+    
     token <- new_data()[,input$inSelect]
     
     word_removal <- unlist(strsplit(input$stopwords, split = " "))
@@ -989,6 +1032,7 @@ server <- function(input, output, session) {
     
     })
   
+  # Topic model plot
   output$topicModel <- renderPlot ({
     chapters_dtm <- word_counts() %>%
       cast_dtm(facet, word, n)
@@ -1010,10 +1054,8 @@ server <- function(input, output, session) {
       facet_wrap(~ topic, scales = "free") +
       theme(axis.text.x = element_text(size = 15, angle = 90, hjust = 1))
   })
-  
-  
-
-  
+    
+  # Add "Previous" and "Next" buttons on the bottom of each page  
   observeEvent(input$next1, {
     updateTabItems(session, "sidebar",
                    selected = "data_upload")
@@ -1044,7 +1086,6 @@ server <- function(input, output, session) {
                    selected = "multipleFiles")
   })
   
-  
   observeEvent(input$previous2, {
     updateTabsetPanel(session, "sidebar",
                       selected = "introduction")
@@ -1064,7 +1105,6 @@ server <- function(input, output, session) {
     updateTabsetPanel(session, "sidebar",
                       selected = "freq_plots")
   })
-
   
   observeEvent(input$previous6, {
     updateTabsetPanel(session, "sidebar",
