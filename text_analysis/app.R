@@ -164,8 +164,8 @@ ui <- dashboardPage(
                            textOutput("afinnDescription"),
                            br(),
                            plotOutput("afinn_sentiment") %>% shinycssloaders::withSpinner(),
-                           sliderInput("word_score", "Keep word scores with absolute value greater than:", 
-                                       min = 0, max = 100, value = 25))),
+                           sliderInput("word_score", "How many words would you like to see?:", 
+                                       min = 0, max = 25, value = 10))),
               fluidRow(box(title = "Bing Sentiments", status = "primary",
                            collapsible = TRUE, width = 12,
                            textOutput("bingDescription"),
@@ -258,7 +258,6 @@ ui <- dashboardPage(
       
       # Multiple Files Tab
       tabItem(tabName = "multipleFiles",
-              textOutput("multipleDescription"),
               br(),
               fluidRow(box(title = "Choose a faceting variable", status = "primary", solidHeader = TRUE,
                            collapsible = TRUE,
@@ -275,8 +274,8 @@ ui <- dashboardPage(
               fluidRow(box(title = "AFINN Sentiments", status = "primary", solidHeader = TRUE,
                            collapsible = TRUE, width = 12,
                            plotOutput("afinn_sentimentGroup") %>% shinycssloaders::withSpinner(),
-                           sliderInput("word_countGroup", "Keep words with a score greater than: ",
-                                       min = 0, max = 200, value = 25))),
+                           sliderInput("word_countGroup", "How many words would you like to see?: ",
+                                       min = 0, max = 50, value = 25))),
               fluidRow(box(title = "Bing Sentiments", status = "primary", solidHeader = TRUE,
                            collapsible = TRUE, width = 12,
                            plotOutput("bing_sentimentGroup") %>% shinycssloaders::withSpinner(),
@@ -340,11 +339,12 @@ server <- function(input, output, session) {
         data_set <- as.data.frame(data.table::rbindlist(lapply(input$file1$datapath, data.table::fread),
                                                         use.names = TRUE, fill = TRUE))
       } else {
-        data_set <- read.delim(input$file1$datapath, header = F)
+        #data_set <- read.delim(input$file1$datapath, header = F)
+      
         
         # Code that might work to read in multiple text files
-        #tbl_list <- lapply(input$files$datapath, read.delim, header=FALSE, sep= " ")
-        #data_set <- do.call(rbind, tbl_list)
+        tbl_list <- lapply(input$file1$datapath, read.delim, header = FALSE) 
+        data_set <- as.data.frame(data.table::rbindlist(tbl_list, idcol = TRUE, use.names = TRUE, fill = TRUE))
       }
     }
   })
@@ -544,7 +544,7 @@ server <- function(input, output, session) {
       count(word, sort=TRUE) %>%
       ungroup() %>%
       mutate(word_score = score*n) %>%
-      filter(abs(word_score) > input$word_score) %>% 
+      top_n(input$word_score, abs(word_score)) %>%
       mutate(word = reorder(word, word_score)) %>%
       ggplot(aes(word, n*score, fill=n*score>0)) + geom_col(show.legend = FALSE) + 
       coord_flip() + ggtitle("Words with largest Sentiment Contribution from AFINN Lexicon") +
@@ -836,11 +836,6 @@ server <- function(input, output, session) {
       scale_edge_width(range = c(2,6))
   })
   
-  output$multipleDescription <- renderText("This will be the area where we process multiple files. The structure for the data will be that all of the files
-                                           get merged into one file and they have some file ID that distinguish which file they came from. Then you can basically 
-                                           facet plots by the ID variable and get a plot for each file. For January work with Chris, I can add in tf-idf scores and
-                                           other cool stuff that you can do when you have multiple data sources.")
-  
   output$facetVar <- renderText("If you input multiple files, you may be wanting to look at graphs for each file, not just all of the files grouped together. In order
                                 to create these graphs, we need to identify which variable holds the information that differentiates files from one another. This
                                 will be some sort of ID variable.")
@@ -885,7 +880,8 @@ server <- function(input, output, session) {
       count(word, sort=TRUE) %>%
       ungroup() %>%
       mutate(word_score = score*n) %>%
-      filter(abs(word_score) > input$word_countGroup) %>% 
+      top_n(input$word_countGroup, abs(word_score)) %>%
+      #filter(abs(word_score) > input$word_countGroup) %>% 
       mutate(word = reorder(word, word_score)) %>%
       ggplot(aes(word, n*score, fill = n*score>0)) + geom_col(show.legend = FALSE) +
       facet_wrap(~facet, scales = "free_y") +
@@ -907,7 +903,6 @@ server <- function(input, output, session) {
       group_by(facet, sentiment) %>%
       count(word, sort=TRUE) %>%
       ungroup() %>%
-      #filter(n > input$word_countGroup2) %>%
       mutate(word = reorder(word, n)) %>%
       top_n(n = input$word_countGroup2, word) %>%
       ggplot(aes(word, n, fill = sentiment)) + geom_col(show.legend = FALSE) + 
@@ -920,7 +915,6 @@ server <- function(input, output, session) {
   
   
   tfidf_data <- reactive ({
-
     
    token <- new_data()[,input$inSelect]
     
@@ -969,48 +963,37 @@ server <- function(input, output, session) {
             strip.text.x = element_text(size = 12, face = "bold"))
   })
   
-  by_chapter <- reactive ({
-    token <- new_data()[,input$inSelect]
-    
-    # Filter data based on whether or not there are stop words
-    if(input$remove_stopwords == TRUE) {
-      data_set <- cbind(new_data(), token) %>%
-        mutate(text = as.character(token), linenumber=row_number(),
-               facet = as.factor(new_data()[,input$inSelectGroup])) %>%
-        group_by(facet) %>%
-        mutate(chapter = cumsum(str_detect(text, regex("^chapter ", ignore_case = TRUE)))) %>%
-        ungroup() %>%
-        filter(chapter > 0)
-    } else {
-      data_set <- cbind(new_data(), token) %>%
-        mutate(text = as.character(token), linenumber=row_number(),
-               facet = as.factor(new_data()[,input$inSelectGroup])) %>%
-        group_by(facet) %>%
-        mutate(chapter = cumsum(str_detect(text, regex("^chapter ", ignore_case = TRUE)))) %>%
-        ungroup() %>%
-        filter(chapter > 0)
-    }
-    
-    })
-  
   word_counts <- reactive ({
+    token <- new_data()[,input$inSelect]
     
     word_removal <- unlist(strsplit(input$stopwords, split = " "))
     `%nin%` = Negate(`%in%`)
     
-    by_chapter() %>%
-      unite(title_chapter, facet, chapter) %>%
-      unnest_tokens(word, text) %>%
-      filter(word %nin% word_removal) %>%
-      anti_join(stop_words) %>%
-      count(title_chapter, word, sort = TRUE)
-  })
+    if(input$remove_stopwords == TRUE) {
+      data_set <- cbind(new_data(), token) %>%
+        mutate(text = as.character(token), linenumber = row_number(),
+               facet = as.factor(new_data()[,input$inSelectGroup])) %>%
+        unnest_tokens(word, text) %>%
+        filter(word %nin% word_removal) %>%
+        anti_join(stop_words) %>%
+        count(facet, word, sort = TRUE)
+    } else {
+      data_set <- cbind(new_data(), token) %>%
+        mutate(text = as.character(token), linenumber=row_number(),
+               facet = as.factor(new_data()[,input$inSelectGroup])) %>%
+        unnest_tokens(word, text) %>%
+        filter(word %nin% word_removal) %>%
+        anti_join(stop_words) %>%
+        count(facet, word, sort = TRUE)
+    }
+    
+    })
   
   output$topicModel <- renderPlot ({
     chapters_dtm <- word_counts() %>%
-    cast_dtm(title_chapter, word, n)
+      cast_dtm(facet, word, n)
     
-    chapters_lda <- LDA(chapters_dtm, k = input$num_topics, control = list(seed = 1234)) # add user input for number of topics
+    chapters_lda <- LDA(chapters_dtm, k = input$num_topics, control = list(seed = 1234))
     
     chapters_lda_td <- tidy(chapters_lda)
     
