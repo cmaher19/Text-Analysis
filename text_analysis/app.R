@@ -192,7 +192,11 @@ ui <- dashboardPage(
                            textOutput("sentwcDescription"),
                            plotOutput("sentiment_wordcloud", width = "100%") %>% shinycssloaders::withSpinner(),
                            sliderInput("num_words2", "Number of words in the cloud:", 
-                                       min = 0, max = 100, value = 50))),
+                                       min = 0, max = 100, value = 50),
+                           sliderInput("scale3", "Control height of wordcloud:",
+                                       min = 0, max = 10, value = 5),
+                           sliderInput("scale4", "Control width of wordcloud: ",
+                                       min = 0, max = 2, step = 0.1, value = 1))),
               fluidRow(box(title = "Negated Sentiments", status = "primary",
                            collapsible = TRUE, width = 12, 
                            textOutput("negateDescription"),
@@ -345,7 +349,6 @@ server <- function(input, output, session) {
         data_set <- as.data.frame(data.table::rbindlist(lapply(input$file1$datapath, data.table::fread),
                                                         use.names = TRUE, fill = TRUE))
       } else {
-        # Code that might work to read in multiple text files
         tbl_list <- lapply(input$file1$datapath, read.delim, header = FALSE) 
         data_set <- as.data.frame(data.table::rbindlist(tbl_list, idcol = TRUE, use.names = TRUE, fill = TRUE))
       }
@@ -658,7 +661,7 @@ server <- function(input, output, session) {
       count(word, sentiment, sort = TRUE) %>%
       reshape2::acast(word ~ sentiment, value.var = "n", fill=1) %>%
       wordcloud::comparison.cloud(colors = c("orchid", "seagreen2"), max.words = input$num_words2, 
-                                  scale = c(4, 0.5), title.size = 1)
+                                  scale=c(input$scale3, input$scale4), title.size = 1)
   })
   
   # Data processing to get negated sentiment words
@@ -940,17 +943,18 @@ server <- function(input, output, session) {
       mutate(facet = as.factor(plotdata()[,input$inSelectGroup])) %>%
       inner_join(get_sentiments("bing")) %>%
       filter(word %nin% s_word_removal) %>%
-      group_by(facet, sentiment) %>%
+      group_by(sentiment, facet) %>%
       count(word, sort=TRUE) %>%
       ungroup() %>%
       mutate(word = reorder(word, n)) %>%
       top_n(n = input$word_countGroup2, word) %>%
-      ggplot(aes(word, n, fill = sentiment)) + geom_col(show.legend = FALSE) + 
+      ggplot(aes(word, n, fill = sentiment)) + 
+      geom_col(show.legend = FALSE) + 
       facet_wrap(sentiment ~ facet, scales = "free_y") + coord_flip() + 
       ggtitle('Most Common Sentiments with Bing Lexicon') + ylab("Count") + xlab("Word") +
       theme(axis.text = element_text(size = 12), axis.title = element_text(size = 14,face = "bold"),
             plot.title = element_text(size = 16, face = "bold"), 
-            strip.text.x = element_text(size = 12, face = "bold"))
+            strip.text.x = element_text(size = 12, face = "bold")) 
   })
   
   # Prepare data for tf-idf processing
